@@ -1,0 +1,9 @@
+services:
+  tests:
+    build: .
+    environment:
+      HEADLESS: "true"
+      BASE_URL: https://www.automationexercise.com
+      API_BASE_URL: https://www.automationexercise.com/api
+    volumes:
+      - ./allure-results:/app/allure-results

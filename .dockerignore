@@ -1,0 +1,9 @@
+.venv
+.git
+.gitignore
+allure-results
+allure-report
+**/__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
