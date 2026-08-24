@@ -1,0 +1,10 @@
+# Named environments for the same public demo application.
+# Override any value with environment variables / .env (see Settings).
+
+prod:
+  base_url: https://www.automationexercise.com
+  api_base_url: https://www.automationexercise.com/api
+
+stage:
+  base_url: https://www.automationexercise.com
+  api_base_url: https://www.automationexercise.com/api

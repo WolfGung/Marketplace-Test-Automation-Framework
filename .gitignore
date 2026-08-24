@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Test artifacts
+allure-results/
+allure-report/
+playwright-report/
+test-results/
+screenshots/
+videos/
+traces/
+*.webm
+*.zip
+
+# IDE
+.idea/
+.vscode/
