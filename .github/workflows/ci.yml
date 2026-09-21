@@ -4,8 +4,27 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
 
 jobs:
+  reachable:
+    name: Storefront reachable from this runner
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.probe.outputs.status }}
+    steps:
+      - id: probe
+        name: Probe the storefront
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://www.automationexercise.com/)
+          echo "status=$code" >> "$GITHUB_OUTPUT"
+          echo "The storefront answered HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::notice title=Browser tests skipped::The storefront answered HTTP $code from this runner. The application under test is a third-party site this project does not control, so the browser suite is skipped rather than reported as failing. The API suite still ran."
+          fi
+
   api:
     name: API tests
     runs-on: ubuntu-latest
@@ -29,6 +48,8 @@ jobs:
   ui:
     name: UI and E2E tests
     runs-on: ubuntu-latest
+    needs: reachable
+    if: needs.reachable.outputs.status == '200'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
