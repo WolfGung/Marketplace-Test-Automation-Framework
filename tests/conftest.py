@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+from typing import Optional
 
 import allure
 import pytest
-from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
+from playwright.sync_api import Browser, BrowserContext, Page, Playwright, Video, sync_playwright
 
 from ecom_taf.api import AccountApi, HttpClient, ProductsApi
 from ecom_taf.config import Settings, get_settings
@@ -20,6 +22,12 @@ from ecom_taf.ui.pages import (
     ProductsPage,
     SignupPage,
 )
+
+
+#: Holds the finished-page's Video handle across the `page` -> `context` teardown
+#: boundary. A StashKey rather than a raw node attribute so it can't collide with
+#: anything another fixture or plugin stores on the same node.
+VIDEO_KEY: pytest.StashKey[Optional[Video]] = pytest.StashKey()
 
 
 @pytest.fixture(scope="session")
@@ -84,7 +92,7 @@ def context(browser: Browser, settings: Settings, request: pytest.FixtureRequest
     # The page fixture tears down first and closes the page, so `context.pages`
     # is empty by now — the handle has to be captured while the page still
     # exists. The page fixture stashes it for us.
-    video = getattr(request.node, "_video", None)
+    video = request.node.stash.get(VIDEO_KEY, None)
     context.close()  # Playwright only finalises the file when the context closes
     if video is None:
         return
@@ -93,16 +101,25 @@ def context(browser: Browser, settings: Settings, request: pytest.FixtureRequest
         target = source.with_name(f"checkout-{request.node.name}.webm")
         source.rename(target)
         allure.attach.file(str(target), name="video", attachment_type=allure.attachment_type.WEBM)
-    except Exception:  # a recording is never worth failing a green test over
-        pass
+    except Exception as exc:  # a recording is never worth failing a green test over
+        print(
+            f"[video] could not attach recording for {request.node.name}: {exc!r}",
+            file=sys.stderr,
+        )
 
 
 @pytest.fixture
 def page(context: BrowserContext, request: pytest.FixtureRequest) -> Page:
     page = context.new_page()
     yield page
-    request.node._video = page.video  # None when recording is off
+    request.node.stash[VIDEO_KEY] = page.video  # None when recording is off
     page.close()
+
+
+#: Deliberately short and independent of `settings.default_timeout_ms`: this hook
+#: runs after a test has already failed, so it must fail fast rather than block the
+#: session for the full navigation timeout on top of the original failure.
+DIAGNOSTIC_CAPTURE_TIMEOUT_MS = 5_000
 
 
 @pytest.hookimpl(hookwrapper=True, tryfirst=True)
@@ -114,16 +131,39 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> None:
     page = item.funcargs.get("page")
     if page is None:
         return
-    allure.attach(
-        page.screenshot(full_page=True),
-        name="failure-screenshot",
-        attachment_type=allure.attachment_type.PNG,
-    )
-    allure.attach(
-        page.content(),
-        name="failure-html",
-        attachment_type=allure.attachment_type.HTML,
-    )
+
+    # Neither capture may be allowed to raise: a page already closed or a slow/dead
+    # site must not turn a reported test failure into a crashed session (which would
+    # skip fixture teardown, e.g. `registered_user`'s account cleanup, entirely).
+    try:
+        screenshot = page.screenshot(full_page=True, timeout=DIAGNOSTIC_CAPTURE_TIMEOUT_MS)
+    except Exception as exc:
+        allure.attach(
+            f"Could not capture failure screenshot: {exc!r}",
+            name="failure-screenshot-unavailable",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+    else:
+        allure.attach(
+            screenshot,
+            name="failure-screenshot",
+            attachment_type=allure.attachment_type.PNG,
+        )
+
+    try:
+        html = page.content()
+    except Exception as exc:
+        allure.attach(
+            f"Could not capture failure HTML: {exc!r}",
+            name="failure-html-unavailable",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+    else:
+        allure.attach(
+            html,
+            name="failure-html",
+            attachment_type=allure.attachment_type.HTML,
+        )
 
 
 @pytest.fixture

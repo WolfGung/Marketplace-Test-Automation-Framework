@@ -234,8 +234,3 @@ traces/
 
 # Local working notes: design specs and plans, not part of the project
 docs/notes/
-
-videos/
-allure-results/
-allure-report/
-site/
