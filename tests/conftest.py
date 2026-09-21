@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import allure
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
@@ -66,21 +68,40 @@ def browser(playwright_runtime: Playwright, settings: Settings) -> Browser:
 
 
 @pytest.fixture
-def context(browser: Browser, settings: Settings) -> BrowserContext:
-    context = browser.new_context(
-        base_url=settings.base_url,
-        viewport={"width": 1440, "height": 900},
-        ignore_https_errors=True,
-    )
+def context(browser: Browser, settings: Settings, request: pytest.FixtureRequest) -> BrowserContext:
+    kwargs = {
+        "base_url": settings.base_url,
+        "viewport": {"width": 1440, "height": 900},
+        "ignore_https_errors": True,
+    }
+    recording = settings.record_video and request.node.get_closest_marker("e2e") is not None
+    if recording:
+        kwargs["record_video_dir"] = settings.video_dir
+        kwargs["record_video_size"] = {"width": 1440, "height": 900}
+    context = browser.new_context(**kwargs)
     context.set_default_timeout(settings.default_timeout_ms)
     yield context
-    context.close()
+    # The page fixture tears down first and closes the page, so `context.pages`
+    # is empty by now — the handle has to be captured while the page still
+    # exists. The page fixture stashes it for us.
+    video = getattr(request.node, "_video", None)
+    context.close()  # Playwright only finalises the file when the context closes
+    if video is None:
+        return
+    try:
+        source = Path(video.path())
+        target = source.with_name(f"checkout-{request.node.name}.webm")
+        source.rename(target)
+        allure.attach.file(str(target), name="video", attachment_type=allure.attachment_type.WEBM)
+    except Exception:  # a recording is never worth failing a green test over
+        pass
 
 
 @pytest.fixture
-def page(context: BrowserContext) -> Page:
+def page(context: BrowserContext, request: pytest.FixtureRequest) -> Page:
     page = context.new_page()
     yield page
+    request.node._video = page.video  # None when recording is off
     page.close()
 
 

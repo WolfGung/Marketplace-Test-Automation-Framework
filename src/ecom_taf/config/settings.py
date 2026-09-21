@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     default_timeout_ms: int = 15_000
     http_timeout_s: float = 20.0
 
+    #: Record the browser run. Off by default: it costs disk on every run and is
+    #: only wanted when a run is going to be published.
+    record_video: bool = False
+    video_dir: str = "videos"
+
     def apply_named_environment(self) -> None:
         if not ENVIRONMENTS_FILE.exists():
             return
