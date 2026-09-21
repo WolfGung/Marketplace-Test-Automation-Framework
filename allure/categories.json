@@ -1,0 +1,21 @@
+[
+  {
+    "name": "Product defects",
+    "matchedStatuses": ["failed"]
+  },
+  {
+    "name": "Timeouts",
+    "matchedStatuses": ["broken", "failed"],
+    "traceRegex": ".*TimeoutError.*"
+  },
+  {
+    "name": "Selector no longer matches",
+    "matchedStatuses": ["broken", "failed"],
+    "traceRegex": ".*(strict mode violation|waiting for locator).*"
+  },
+  {
+    "name": "Site or infrastructure unreachable",
+    "matchedStatuses": ["broken"],
+    "traceRegex": ".*(ConnectError|ConnectTimeout|ReadTimeout|ProxyError|ERR_CONNECTION|ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED|net::ERR_).*"
+  }
+]

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import shutil
+import sys
 import warnings
 from pathlib import Path
 from typing import Any, Optional
@@ -28,6 +31,59 @@ from ecom_taf.ui.pages import (
 #: boundary. A StashKey rather than a raw node attribute so it can't collide with
 #: anything another fixture or plugin stores on the same node.
 VIDEO_KEY: pytest.StashKey[Optional[Video]] = pytest.StashKey()
+
+
+#: Failure categories, kept beside the suite and read by Allure out of the
+#: results directory. `allure generate` has no flag for it: a copy has to be
+#: in the results themselves, or the report comes out with an empty
+#: Categories tab regardless of what the suite actually produced.
+CATEGORIES = Path(__file__).resolve().parents[1] / "allure" / "categories.json"
+
+
+def copy_categories_into(results_dir: Path) -> None:
+    """Put the failure grouping where Allure reads it from.
+
+    Allure only groups failures when `categories.json` sits in the results
+    directory, so a file that lives in the repository and never travels with a
+    run is a promise the report cannot keep.
+    """
+    results_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(CATEGORIES, results_dir / "categories.json")
+
+
+def _write_environment_properties(results_dir: Path) -> None:
+    """Record what a run was tested against, for the report's Environment panel.
+
+    Allure only populates that panel when `environment.properties` sits in the
+    results directory — otherwise a published report shows a failure without
+    saying which site, which browser, or which Python produced it, and a
+    third party reading it later has no way to tell.
+    """
+    settings = get_settings()
+    results_dir.mkdir(parents=True, exist_ok=True)
+    (results_dir / "environment.properties").write_text(
+        "\n".join(
+            [
+                f"BASE_URL={settings.base_url}",
+                f"API_BASE_URL={settings.api_base_url}",
+                f"Browser={settings.browser}",
+                f"Headless={settings.headless}",
+                f"Python={sys.version.split()[0]}",
+                f"CI={os.getenv('CI', 'false')}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    if session.config.option.collectonly:
+        return
+    configured = session.config.getoption("--alluredir", default=None)
+    if configured:
+        results_dir = Path(configured)
+        copy_categories_into(results_dir)
+        _write_environment_properties(results_dir)
 
 
 def _attach_diagnostic(body: Any, *, name: str, attachment_type: Any) -> None:
