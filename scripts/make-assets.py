@@ -36,7 +36,9 @@ The HTTP server is this script's own: Allure's report reads its data with
 `fetch`, which a `file://` page is not allowed to do, and the pixel check
 below reads a canvas back, which needs the image to share an origin with the
 page reading it. It listens on the loopback interface, on a port the kernel
-picks, and serves only the report and the images this script writes.
+picks, and it is rooted at the generated report — not at the repository, and
+not at the repository behind a rule about how a request is spelled. The
+images it also offers back are named under `/exports/`, never walked to.
 """
 from __future__ import annotations
 
@@ -50,6 +52,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -66,7 +69,7 @@ SHOTS = [
 # script. So the page waits for something it only shows once it is ready, then
 # gets a moment to settle.
 PAGES = [
-    ("site/report/", "allure-report-screenshot.png", "text=test cases", 1536, 1024),
+    ("/", "allure-report-screenshot.png", "text=test cases", 1536, 1024),
 ]
 
 REPORT_DIR = ROOT / "site" / "report"
@@ -84,39 +87,85 @@ MIN_INK_SHARE = 0.02
 #: and keeps the readback off the critical path of the export.
 PROBE_GRID = 200
 
+#: The document `/probe` answers with: somewhere for the canvas readback to
+#: run that shares an origin with the images it reads.
+PROBE_PAGE = b"<!doctype html><meta charset=utf-8><title>probe</title>"
+
+
+#: The images this script writes, offered back under a prefix of their own.
+#: They are named, not looked up: the request supplies a name to compare
+#: against this mapping and never a path to walk.
+EXPORTS = {name: ROOT / name for _s, name, _w, _h in SHOTS} | {
+    name: ROOT / name for _u, name, _r, _w, _h in PAGES
+}
+EXPORT_PREFIX = "/exports/"
+
 
 class _Handler(http.server.SimpleHTTPRequestHandler):
     """Serves the generated report, the exported images, and one blank page.
 
-    A plain static handler rooted at the repository would put everything in
-    the working tree — `.env` included — on a listening socket. Nothing here
-    needs that, so the handler answers for the report, for the files this
-    script writes, and for `/probe`, which exists only to give the canvas
-    readback a document of the same origin as the images.
+    A static handler rooted at the repository would put everything in the
+    working tree — `.env` included — on a listening socket, and a rule that
+    only inspected the request string would not stop it: the string
+    `/site/report/../../.env` starts with the report's path and still names
+    the repository root once it is decoded and normalised. So the root is the
+    report directory itself, and every path this handler is willing to open is
+    resolved first and then checked to be inside it. The images are not served
+    from that tree at all; they are looked up by name under `/exports/`.
+
+    `/probe` exists only to give the canvas readback a document of the same
+    origin as the images.
     """
 
-    #: The images this script exports, which the pixel check reads back.
-    exports = frozenset(f"/{name}" for _s, name, _w, _h in SHOTS) | frozenset(
-        f"/{name}" for _u, name, _r, _w, _h in PAGES
-    )
-
     def do_GET(self) -> None:  # noqa: N802 - the name is http.server's
-        if self.path.split("?", 1)[0] == "/probe":
-            body = b"<!doctype html><meta charset=utf-8><title>probe</title>"
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+        served = self._special()
+        if served is None:
+            super().do_GET()
             return
-        if not self._permitted():
-            self.send_error(404, "not served by this exporter")
-            return
-        super().do_GET()
+        status, content_type, body = served
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
-    def _permitted(self) -> bool:
-        path = self.path.split("?", 1)[0]
-        return path.startswith("/site/report/") or path in self.exports
+    def do_HEAD(self) -> None:  # noqa: N802 - the name is http.server's
+        served = self._special()
+        if served is None:
+            super().do_HEAD()
+            return
+        status, content_type, body = served
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+
+    def _special(self) -> tuple[int, str, bytes] | None:
+        """The two routes that are not files inside the report directory."""
+        path = urllib.parse.unquote(self.path.split("?", 1)[0].split("#", 1)[0])
+        if path == "/probe":
+            return 200, "text/html; charset=utf-8", PROBE_PAGE
+        if not path.startswith(EXPORT_PREFIX):
+            return None
+        name = path[len(EXPORT_PREFIX):]
+        source = EXPORTS.get(name)
+        if source is None or "/" in name:
+            return 404, "text/plain; charset=utf-8", b"not exported by this script"
+        return 200, "image/png", source.read_bytes()
+
+    def send_head(self):  # returns what http.server returns: a file object, or None
+        """Refuse anything that resolves outside the report directory.
+
+        `SimpleHTTPRequestHandler.translate_path` decodes, normalises and
+        joins against the root, so the decision here is made on the file that
+        would actually be opened rather than on the string that asked for it.
+        """
+        candidate = Path(self.translate_path(self.path)).resolve()
+        root = REPORT_DIR.resolve()
+        if candidate != root and root not in candidate.parents:
+            self.send_error(404, "not served by this exporter")
+            return None
+        return super().send_head()
 
     def log_message(self, fmt: str, *args: object) -> None:
         """Silence the per-request log; the export's own output is the story."""
@@ -124,8 +173,8 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
 
 @contextlib.contextmanager
 def _serving() -> Iterator[str]:
-    """The repository over HTTP on loopback, for as long as the export runs."""
-    handler = functools.partial(_Handler, directory=str(ROOT))
+    """The generated report over HTTP on loopback, for as long as the export runs."""
+    handler = functools.partial(_Handler, directory=str(REPORT_DIR))
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -214,7 +263,7 @@ def _summary_statistic(page: Page, summary_url: str) -> dict[str, int]:
     return statistic
 
 
-def _require_report_is_complete_and_green(page: Page, ran: str) -> None:
+def _require_report_is_complete_and_green(page: Page, base_url: str, ran: str) -> None:
     """Refuse to screenshot a report that is partial or has failures.
 
     Waiting for the text "test cases" only proves *an* overview rendered — a
@@ -223,12 +272,21 @@ def _require_report_is_complete_and_green(page: Page, ran: str) -> None:
     the screenshot would actually see: how many cases the run reports, and
     whether any of them failed.
 
+    This runs before the page is given time to render, and not after. The
+    overview is drawn from `widgets/summary.json`: if that file is missing or
+    malformed, the text worth waiting for is exactly the text that can never
+    appear, and waiting for it first would replace every sentence below with a
+    bare sixty-second timeout naming nothing. The file is read from the server
+    rather than from the page, and the URL is built from the address being
+    served rather than from `page.url`, which Allure rewrites with a fragment
+    as it routes.
+
     `ran` is the marker expression the run was given, and is empty for the
     whole suite. A run that deliberately left part of the suite out passes the
     same expression to `--ran`, so a short report is still checked against a
     number rather than waved through.
     """
-    summary_url = page.url.rstrip("/") + "/widgets/summary.json"
+    summary_url = f"{base_url}/widgets/summary.json"
     stat = _summary_statistic(page, summary_url)
     not_green = stat["failed"] + stat["broken"] + stat["unknown"]
     expected = _collected_test_count(("-m", ran))
@@ -314,7 +372,7 @@ def _require_a_picture(page: Page, base_url: str, name: str, width: int, height:
             f"{name} is {actual[0]}x{actual[1]}, not the {width}x{height} it has to be. "
             f"The profile crops anything else, so this file cannot be shipped."
         )
-    distinct, ink = _ink(page, f"{base_url}/{name}")
+    distinct, ink = _ink(page, f"{base_url}{EXPORT_PREFIX}{name}")
     if distinct < MIN_DISTINCT_COLOURS or ink < MIN_INK_SHARE:
         raise RuntimeError(
             f"{name} is {width}x{height} but essentially blank: a grid of samples found "
@@ -351,29 +409,34 @@ def main(argv: list[str] | None = None) -> None:
         )
     with _serving() as base_url, sync_playwright() as p:
         browser = p.chromium.launch()
-        probe = browser.new_page()
-        probe.goto(f"{base_url}/probe", wait_until="load")
+        # Closed the way the server is closed: every refusal in this script
+        # leaves by raising, and the one resource that was not unwound in a
+        # `finally` was the browser.
+        try:
+            probe = browser.new_page()
+            probe.goto(f"{base_url}/probe", wait_until="load")
 
-        for source, name, width, height in SHOTS:
-            page = browser.new_page(viewport={"width": width, "height": height})
-            page.goto((ROOT / source).as_uri())
-            page.wait_for_timeout(300)
-            page.screenshot(path=ROOT / name)
-            page.close()
-            _require_a_picture(probe, base_url, name, width, height)
+            for source, name, width, height in SHOTS:
+                page = browser.new_page(viewport={"width": width, "height": height})
+                page.goto((ROOT / source).as_uri())
+                page.wait_for_timeout(300)
+                page.screenshot(path=ROOT / name)
+                page.close()
+                _require_a_picture(probe, base_url, name, width, height)
 
-        for path, name, ready, width, height in PAGES:
-            page = browser.new_page(viewport={"width": width, "height": height})
-            page.goto(f"{base_url}/{path}", wait_until="load", timeout=60_000)
-            page.wait_for_selector(ready, timeout=60_000)
-            _require_report_is_complete_and_green(page, ran)
-            page.wait_for_timeout(3000)
-            page.screenshot(path=ROOT / name)
-            page.close()
-            _require_a_picture(probe, base_url, name, width, height)
+            for path, name, ready, width, height in PAGES:
+                page = browser.new_page(viewport={"width": width, "height": height})
+                page.goto(f"{base_url}{path}", wait_until="load", timeout=60_000)
+                _require_report_is_complete_and_green(page, base_url, ran)
+                page.wait_for_selector(ready, timeout=60_000)
+                page.wait_for_timeout(3000)
+                page.screenshot(path=ROOT / name)
+                page.close()
+                _require_a_picture(probe, base_url, name, width, height)
 
-        probe.close()
-        browser.close()
+            probe.close()
+        finally:
+            browser.close()
 
 
 if __name__ == "__main__":
