@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import sys
+import warnings
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import allure
 import pytest
@@ -28,6 +28,19 @@ from ecom_taf.ui.pages import (
 #: boundary. A StashKey rather than a raw node attribute so it can't collide with
 #: anything another fixture or plugin stores on the same node.
 VIDEO_KEY: pytest.StashKey[Optional[Video]] = pytest.StashKey()
+
+
+def _attach_diagnostic(body: Any, *, name: str, attachment_type: Any) -> None:
+    """Best-effort Allure attach: a failure here must never propagate.
+
+    Used for every attachment produced while a test is otherwise green (or already
+    failed for its own reason) — the diagnostic is a courtesy, never a reason to
+    take the run down.
+    """
+    try:
+        allure.attach(body, name=name, attachment_type=attachment_type)
+    except Exception as exc:
+        warnings.warn(f"could not attach {name!r} to Allure: {exc!r}", stacklevel=2)
 
 
 @pytest.fixture(scope="session")
@@ -102,10 +115,14 @@ def context(browser: Browser, settings: Settings, request: pytest.FixtureRequest
         source.rename(target)
         allure.attach.file(str(target), name="video", attachment_type=allure.attachment_type.WEBM)
     except Exception as exc:  # a recording is never worth failing a green test over
-        print(
-            f"[video] could not attach recording for {request.node.name}: {exc!r}",
-            file=sys.stderr,
-        )
+        # A print to stderr is invisible under this project's own invocation
+        # (`-q`, no `-s`/`-rA`): a pytest warning surfaces in the default summary
+        # under `-q` too, and the Allure attachment travels with the report that a
+        # later step publishes — that is where anyone chasing a missing video will
+        # actually be looking.
+        message = f"could not attach recording for {request.node.name}: {exc!r}"
+        warnings.warn(message, stacklevel=2)
+        _attach_diagnostic(message, name="video-unavailable", attachment_type=allure.attachment_type.TEXT)
 
 
 @pytest.fixture
@@ -122,6 +139,39 @@ def page(context: BrowserContext, request: pytest.FixtureRequest) -> Page:
 DIAGNOSTIC_CAPTURE_TIMEOUT_MS = 5_000
 
 
+def _capture_failure_diagnostics(page: Page) -> None:
+    """Best-effort failure screenshot + HTML capture. Must never raise.
+
+    Factored out of the hook so it can be exercised directly, with a stub page,
+    from ``tests/unit/test_failure_diagnostics.py`` — a guard with no test for it
+    is a guard that rots.
+    """
+    # Neither capture may be allowed to raise: a page already closed or a slow/dead
+    # site must not turn a reported test failure into a crashed session (which would
+    # skip fixture teardown, e.g. `registered_user`'s account cleanup, entirely).
+    try:
+        screenshot = page.screenshot(full_page=True, timeout=DIAGNOSTIC_CAPTURE_TIMEOUT_MS)
+    except Exception as exc:
+        _attach_diagnostic(
+            f"Could not capture failure screenshot: {exc!r}",
+            name="failure-screenshot-unavailable",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+    else:
+        _attach_diagnostic(screenshot, name="failure-screenshot", attachment_type=allure.attachment_type.PNG)
+
+    try:
+        html = page.content()
+    except Exception as exc:
+        _attach_diagnostic(
+            f"Could not capture failure HTML: {exc!r}",
+            name="failure-html-unavailable",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+    else:
+        _attach_diagnostic(html, name="failure-html", attachment_type=allure.attachment_type.HTML)
+
+
 @pytest.hookimpl(hookwrapper=True, tryfirst=True)
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> None:
     outcome = yield
@@ -131,39 +181,7 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> None:
     page = item.funcargs.get("page")
     if page is None:
         return
-
-    # Neither capture may be allowed to raise: a page already closed or a slow/dead
-    # site must not turn a reported test failure into a crashed session (which would
-    # skip fixture teardown, e.g. `registered_user`'s account cleanup, entirely).
-    try:
-        screenshot = page.screenshot(full_page=True, timeout=DIAGNOSTIC_CAPTURE_TIMEOUT_MS)
-    except Exception as exc:
-        allure.attach(
-            f"Could not capture failure screenshot: {exc!r}",
-            name="failure-screenshot-unavailable",
-            attachment_type=allure.attachment_type.TEXT,
-        )
-    else:
-        allure.attach(
-            screenshot,
-            name="failure-screenshot",
-            attachment_type=allure.attachment_type.PNG,
-        )
-
-    try:
-        html = page.content()
-    except Exception as exc:
-        allure.attach(
-            f"Could not capture failure HTML: {exc!r}",
-            name="failure-html-unavailable",
-            attachment_type=allure.attachment_type.TEXT,
-        )
-    else:
-        allure.attach(
-            html,
-            name="failure-html",
-            attachment_type=allure.attachment_type.HTML,
-        )
+    _capture_failure_diagnostics(page)
 
 
 @pytest.fixture
