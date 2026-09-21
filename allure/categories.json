@@ -4,14 +4,14 @@
     "matchedStatuses": ["failed"]
   },
   {
-    "name": "Timeouts",
-    "matchedStatuses": ["broken", "failed"],
-    "traceRegex": ".*TimeoutError.*"
-  },
-  {
     "name": "Selector no longer matches",
     "matchedStatuses": ["broken", "failed"],
     "traceRegex": ".*(strict mode violation|waiting for locator).*"
+  },
+  {
+    "name": "Timeouts",
+    "matchedStatuses": ["broken", "failed"],
+    "traceRegex": "(?s)^(?!.*waiting for locator).*TimeoutError.*$"
   },
   {
     "name": "Site or infrastructure unreachable",

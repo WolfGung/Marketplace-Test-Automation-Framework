@@ -76,14 +76,35 @@ def _write_environment_properties(results_dir: Path) -> None:
     )
 
 
+def _prepare_reporting(results_dir: Path) -> None:
+    """Write the categories file and the environment properties, degrading on failure.
+
+    Same rule as `_attach_diagnostic` and `_capture_failure_diagnostics` below:
+    reporting-adjacent setup must never take the run down. An unwritable
+    `--alluredir`, a path that already exists as a file, a full disk, or a
+    checkout missing `allure/categories.json` would otherwise abort the
+    session before a single test runs — trading a plainer report for no
+    report and no tests at all. The two writes are guarded independently so
+    that one failing (a missing categories file, say) does not also cost the
+    other (the environment panel).
+    """
+    try:
+        copy_categories_into(results_dir)
+    except Exception as exc:
+        warnings.warn(f"could not write categories.json into {results_dir}: {exc!r}", stacklevel=2)
+
+    try:
+        _write_environment_properties(results_dir)
+    except Exception as exc:
+        warnings.warn(f"could not write environment.properties into {results_dir}: {exc!r}", stacklevel=2)
+
+
 def pytest_sessionstart(session: pytest.Session) -> None:
     if session.config.option.collectonly:
         return
     configured = session.config.getoption("--alluredir", default=None)
     if configured:
-        results_dir = Path(configured)
-        copy_categories_into(results_dir)
-        _write_environment_properties(results_dir)
+        _prepare_reporting(Path(configured))
 
 
 def _attach_diagnostic(body: Any, *, name: str, attachment_type: Any) -> None:
