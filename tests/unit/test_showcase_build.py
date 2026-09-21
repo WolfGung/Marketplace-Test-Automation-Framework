@@ -214,11 +214,61 @@ def test_a_skipped_result_is_counted_and_said_on_the_page(
     assert "did not run: the suite skips a check" in _prose(_page(results, tmp_path))
 
 
-def test_a_result_with_no_verdict_is_counted_as_unknown(results: Path) -> None:
+def test_a_broken_result_is_counted_with_the_failures(results: Path) -> None:
+    """`broken` is not a hypothetical status in a browser suite -- it is what
+    Allure records when a test died of an exception rather than of an
+    assertion, which is every Playwright timeout, every strict-mode violation
+    and every connection error. Two of the four buckets in
+    `allure/categories.json` match it. If it did not reach the failed figure,
+    a run against a site that was down would publish `0 failed` beside a report
+    full of red."""
+    _result(results, "e", "broken", "tests.ui.test_cart", ["ui"])
+    summary = summarise(results)
+    assert (summary.product.total, summary.product.failed) == (5, 2)
+    assert (
+        summary.product.passed + summary.product.failed
+        + summary.product.skipped + summary.product.unknown
+    ) == summary.product.total
+
+
+def test_a_broken_result_is_shown_in_the_failed_figure(
+    results: Path, tmp_path: Path
+) -> None:
+    """The counting above only matters if the reader sees it."""
+    _result(results, "e", "broken", "tests.ui.test_cart", ["ui"])
+    assert "<b>2</b><span>failed</span>" in _page(results, tmp_path)
+
+
+def test_a_broken_framework_check_is_not_absorbed_into_all_passed(
+    results: Path, tmp_path: Path
+) -> None:
+    """The same question on the other side of the split: a unit test that blew
+    up rather than failed an assertion must still contradict "All of them
+    passed"."""
+    _result(results, "u1", "broken", "tests.unit.test_settings", [])
+    summary = summarise(results)
+    assert (summary.framework.failed, summary.framework.not_passed) == (1, 1)
+    prose = _prose(_page(results, tmp_path))
+    assert "1 of them did not pass" in prose
+    assert "All of them passed" not in prose
+
+
+def test_a_result_with_no_verdict_is_counted_as_unknown(
+    results: Path, tmp_path: Path
+) -> None:
     _result(results, "e", "unknown", "tests.ui.test_cart", ["ui"])
     summary = summarise(results)
     assert summary.product.unknown == 1
     assert summary.passed + summary.failed + summary.skipped + summary.unknown == 5
+    assert (
+        summary.product.passed + summary.product.failed
+        + summary.product.skipped + summary.product.unknown
+    ) == summary.product.total
+    # and it is said in words, like the skipped count above: a result the page
+    # counted but never named is a total the reader cannot account for
+    assert "finished with no status the report could read" in _prose(
+        _page(results, tmp_path)
+    )
 
 
 def test_a_status_nobody_planned_for_stops_the_build(results: Path) -> None:
@@ -325,6 +375,32 @@ def test_missing_diagrams_are_said_in_words_not_shown_as_broken_images(
     page = _page(results, tmp_path, assets_dir=tmp_path / "nothing")
     assert 'src="assets/' not in page
     assert "diagrams ship with the published build" in page
+
+
+@pytest.mark.parametrize("present, absent", [
+    ("architecture", "ci-pipeline"),
+    ("ci-pipeline", "architecture"),
+])
+def test_one_diagram_can_arrive_without_the_other(
+    results: Path, tmp_path: Path, present: str, absent: str
+) -> None:
+    """The two figures are drawn by the same task but are two files, and a
+    publish can carry one without the other -- a half-finished Task 5, or a
+    copy that failed for one name. The page must then show the one it has and
+    say nothing about the one it does not, rather than falling back to the
+    note that claims neither shipped.
+    """
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    (assets / f"{present}.svg").write_text(f"<svg>{present}</svg>", encoding="utf-8")
+    out = tmp_path / "site"
+    build_site(results, out, revision="abc1234", run_url="", assets_dir=assets)
+    page = (out / "index.html").read_text(encoding="utf-8")
+    assert f'src="assets/{present}.svg"' in page
+    assert f'src="assets/{absent}.svg"' not in page
+    assert "diagrams ship with the published build" not in page
+    assert (out / "assets" / f"{present}.svg").read_text(encoding="utf-8")
+    assert not (out / "assets" / f"{absent}.svg").exists()
 
 
 def test_an_artefact_already_in_place_is_used_and_left_alone(
