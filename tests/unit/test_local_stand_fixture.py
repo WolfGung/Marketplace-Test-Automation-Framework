@@ -119,3 +119,38 @@ def test_a_marked_creator_and_a_test_that_creates_nothing_are_not_reported() -> 
     reader = _Item("tests/api/test_products_api.py::test_products_list", ("products_api",), markers=("api",))
 
     assert _unmarked_account_creators([marked, reader]) == []
+
+
+class _StubNode:
+    def __init__(self, nodeid: str, markers: set[str]) -> None:
+        self.nodeid = nodeid
+        self._markers = markers
+
+    def get_closest_marker(self, name: str):
+        return object() if name in self._markers else None
+
+
+class _StubAccountApi:
+    def __init__(self) -> None:
+        self.created: list[str] = []
+
+    def create_account(self, user):
+        self.created.append(user)
+        return "created"
+
+
+def test_an_unmarked_test_cannot_create_an_account_through_the_api_client() -> None:
+    """The marker is enforced where the account would be created, not only at collection."""
+    from tests.conftest import _guard_account_creation
+
+    api = _guard_account_creation(_StubAccountApi(), _StubNode("tests/api/test_x.py::test_y", set()))
+    with pytest.raises(RuntimeError, match="not marked `destructive`"):
+        api.create_account("someone")
+    assert api.created == [], "the refusal must happen before any request is made"
+
+
+def test_a_marked_test_creates_accounts_as_before() -> None:
+    from tests.conftest import _guard_account_creation
+
+    api = _guard_account_creation(_StubAccountApi(), _StubNode("tests/api/test_x.py::test_y", {"destructive"}))
+    assert api.create_account("someone") == "created" and api.created == ["someone"]

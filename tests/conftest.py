@@ -19,6 +19,7 @@ from playwright.sync_api import Browser, BrowserContext, Page, Playwright, Video
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from ecom_taf.api import AccountApi, HttpClient, ProductsApi
+from ecom_taf.api.client import ApiResult
 from ecom_taf.config import Settings, get_settings
 from ecom_taf.data import UserFactory
 from ecom_taf.models.user import UserAccount
@@ -94,8 +95,8 @@ def _unmarked_account_creators(items: Iterable[pytest.Item]) -> list[str]:
     What it does not see: a test that creates an account by calling the API
     client itself instead of asking for the fixture. There is one of those --
     `tests/api/test_account_api.py::test_create_get_and_delete_user_account`, which
-    creates the account it is about -- and it carries the marker. Anything else
-    that wants to register without the fixture should take that as the rule.
+    creates the account it is about -- and it carries the marker. That route is
+    guarded where the account would be created: see `_guard_account_creation`.
 
     Pure, and separate from the hook, so it can be exercised with stub items
     from `tests/unit/test_local_stand_fixture.py`: a guard with no test for it
@@ -330,9 +331,33 @@ def products_api(http_client: HttpClient) -> ProductsApi:
     return ProductsApi(http_client)
 
 
+def _guard_account_creation(api: AccountApi, node: pytest.Item) -> AccountApi:
+    """Refuse to create an account from a test that is not marked `destructive`.
+
+    The collection-time guard above sees tests that ask for `registered_user`;
+    a test that calls `create_account` itself is invisible to it, and one such
+    test exists. This guard sits where the account would actually be created,
+    so the marker is enforced for every route to that call, present and future:
+    an unmarked test gets a clear failure instead of a record on somebody
+    else's site.
+    """
+    if node.get_closest_marker(DESTRUCTIVE_MARKER) is not None:
+        return api
+
+    def refuse(user: UserAccount) -> ApiResult:
+        raise RuntimeError(
+            f"{node.nodeid} calls create_account but is not marked `{DESTRUCTIVE_MARKER}`; "
+            "creating an account is what that marker exists to declare, and the drift check "
+            'against the public site deselects it (`-m "smoke and not destructive"`).'
+        )
+
+    api.create_account = refuse  # type: ignore[method-assign]
+    return api
+
+
 @pytest.fixture
-def account_api(http_client: HttpClient) -> AccountApi:
-    return AccountApi(http_client)
+def account_api(http_client: HttpClient, request: pytest.FixtureRequest) -> AccountApi:
+    return _guard_account_creation(AccountApi(http_client), request.node)
 
 
 @pytest.fixture

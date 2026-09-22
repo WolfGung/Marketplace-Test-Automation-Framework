@@ -22,9 +22,12 @@ test-smoke:
 test-stand:
 	pytest tests/stand
 
-# The drift check: the public site, read-only cases only.
+# The drift check: the public site, read-only cases only. The two addresses are
+# passed explicitly so a .env that points at the stand cannot turn this into a
+# check of the stand.
 test-public:
-	TEST_ENV=prod pytest -m "smoke and not destructive" --alluredir=allure-results
+	TEST_ENV=prod BASE_URL=https://www.automationexercise.com API_BASE_URL=https://www.automationexercise.com/api \
+		pytest -m "smoke and not destructive" --alluredir=allure-results
 
 # The stand on its own, for looking at it or for pointing another tool at it.
 stand:
