@@ -5,7 +5,9 @@
 
 Start with the evidence: **[the live Allure report](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)** holds every case, its steps and the trend across runs, and **[the project page](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/)** — generated from the run that produced the numbers on it — carries a recording of the purchase running front to back and **[the Playwright trace of that same purchase](https://trace.playwright.dev/?trace=https://wolfgung.github.io/Marketplace-Test-Automation-Framework/media/checkout-trace.zip)**, which can be stepped through action by action with the page's DOM at each step.
 
-[![The published Allure report: the suite's results with their steps, durations and the trend across runs.](allure-report-screenshot.png)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
+[![The overview of the published Allure report: 24 test cases, 100% passing, split by suite into 14 in tests.api, 8 in tests.ui and 2 in tests.e2e, beside a trend that is green across every publication before it. Categories reads "0 items total" and Executors says there is no information about test executors.](allure-report-screenshot.png)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
+
+That is the published report, photographed from what is actually on `gh-pages`, and the two empty panels are part of what it says. Categories holds nothing because publication waits for all three test jobs, so the run that publishes is a passing one and has no failures to group; Executors is empty because the pipeline writes no executor file. The trend beside them is real: it carries over from the previous publication on every run.
 
 A production-style test automation framework for an e-commerce / marketplace application, built with **Python, Pytest and Playwright**.
 
