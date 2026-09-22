@@ -22,13 +22,24 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["ruff>=0.6"]
+# The stand: the small shop in `stand/` the suite runs against by default,
+# plus what its own contract tests need to parse HTML without a browser.
+stand = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.20",
+    "selectolax>=0.3",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+# `src` for the framework; `.` so `stand.app` (the shop in this repository)
+# imports the same way in the stand fixture and in `tests/stand`.
+pythonpath = ["src", "."]
 addopts = "-ra --strict-markers --strict-config"
 markers = [
     "api: REST API tests",
@@ -37,6 +48,8 @@ markers = [
     "smoke: critical path / sanity",
     "negative: negative and boundary cases",
     "integration: API + UI cross-layer checks",
+    "destructive: creates or changes accounts, or places an order — never run against the public site",
+    "stand: the contract of the shop in stand/, checked without a browser",
 ]
 
 [tool.ruff]
@@ -51,4 +64,4 @@ select = ["E", "F", "I", "UP", "B"]
 # `showcase` and `scripts` are this repository's own code, not dependencies:
 # without this they land in the third-party block and every module that
 # imports both pytest and showcase is reported as un-sorted.
-known-first-party = ["ecom_taf", "showcase"]
+known-first-party = ["ecom_taf", "showcase", "stand"]

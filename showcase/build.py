@@ -27,11 +27,15 @@ from urllib.parse import urlparse
 LAYERS = ("api", "ui", "e2e")
 
 #: The suite's other markers. They say what a case is *about* — a negative or
-#: boundary case, a check that spans the API and the browser, the smoke set —
-#: and a case carries them on top of its layer, never instead of one. Treating
+#: boundary case, a check that spans the API and the browser, the smoke set,
+#: a mutation the public site must never see, the stand's own contract — and
+#: a case carries them on top of its layer, never instead of one. Treating
 #: any of them as a fourth layer would double-count every case that carries one
-#: and would put layers on the page that the suite does not have.
-CROSS_CUTTING = ("smoke", "negative", "integration")
+#: and would put layers on the page that the suite does not have. `stand` in
+#: particular never accompanies a layer tag: those cases are the stand's own
+#: contract, not a claim about the product, so they land in the framework
+#: count below, same as `tests/unit`.
+CROSS_CUTTING = ("smoke", "negative", "integration", "destructive", "stand")
 
 if set(LAYERS) & set(CROSS_CUTTING):  # pragma: no cover - guards a typo above
     raise RuntimeError("a marker cannot be both a layer and a cross-cutting tag")
