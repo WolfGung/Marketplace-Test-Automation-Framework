@@ -202,13 +202,49 @@ def test_a_run_without_the_end_to_end_pair_does_not_describe_it(tmp_path: Path) 
     assert "0 end-to-end" in prose
     assert "The end-to-end pair is" not in prose
     assert "end-to-end cases exist because" not in prose
+    assert "end-to-end case exists because" not in prose
 
 
-def test_a_page_with_the_pair_does_describe_it(results: Path, tmp_path: Path) -> None:
+def test_a_page_with_the_pair_does_describe_it(tmp_path: Path) -> None:
     """The guard above must not be a way of never saying anything."""
+    results = tmp_path / "results"
+    results.mkdir()
+    _result(results, "a", "passed", "tests.api.test_products_api", ["api", "smoke"])
+    _result(results, "d", "passed", "tests.e2e.test_checkout_flow", ["e2e", "smoke"])
+    _result(
+        results, "e", "passed",
+        "tests.e2e.test_api_ui_product_consistency", ["e2e", "integration"],
+    )
     prose = _prose(_page(results, tmp_path))
+    assert "2 end-to-end" in prose
     assert "The end-to-end pair is" in prose
     assert "end-to-end cases exist because" in prose
+
+
+def test_one_end_to_end_case_is_not_described_as_a_pair(results: Path, tmp_path: Path) -> None:
+    """A gated browser leg can leave exactly one of the two behind, and the
+    prose written for two reads as nonsense over a 1: "1 end-to-end. The
+    end-to-end pair is one order and one check"."""
+    prose = _prose(_page(results, tmp_path))
+    assert "1 end-to-end" in prose
+    assert "The end-to-end pair is" not in prose
+    assert "end-to-end cases exist because" not in prose
+    assert "The one end-to-end case exists because" in prose
+
+
+def test_more_end_to_end_cases_than_the_pair_are_still_described(tmp_path: Path) -> None:
+    """A third case added to tests/e2e must not leave the figure standing with
+    no sentence at all: "the pair" would be wrong, and silence would be the
+    other way of getting it wrong."""
+    results = tmp_path / "results"
+    results.mkdir()
+    for name in ("d", "e", "f"):
+        _result(results, name, "passed", f"tests.e2e.test_{name}", ["e2e"])
+    prose = _prose(_page(results, tmp_path))
+    assert "3 end-to-end" in prose
+    assert "The end-to-end pair is" not in prose
+    assert "Each of them crosses both doors" in prose
+    assert "3 end-to-end cases exist because" in prose
 
 
 def test_a_page_without_a_recording_does_not_claim_one_was_made(

@@ -186,11 +186,19 @@
     <p>
       They divide into {{API}} against the REST API, {{UI}} through a browser
       and {{E2E}} end-to-end.
-<!--[if e2e]-->
+<!--[if e2e_pair]-->
       The end-to-end pair is one order placed through the interface from
       sign-in to payment, and one check that puts the same question to both
       doors at once.
-<!--[end e2e]-->
+<!--[end e2e_pair]-->
+<!--[if e2e_one]-->
+      That one crosses both doors inside a single test, which is the thing
+      neither of the layers above can do on its own.
+<!--[end e2e_one]-->
+<!--[if e2e_many]-->
+      Each of them crosses both doors inside a single test, which is the thing
+      neither of the layers above can do on its own.
+<!--[end e2e_many]-->
 <!--[if product_skipped]-->
       {{SKIPPED}} of the {{TOTAL}} did not run: the suite skips a check it cannot
       reach instead of reporting a failure the product did not cause.
@@ -349,12 +357,24 @@
       product's name and price as they render, a search made from the page, a
       product reaching the cart with the quantity that was asked for, and a
       sign-in that has to be refused: the {{UI}} browser cases.
-<!--[if e2e]-->
+<!--[if e2e_pair]-->
       The {{E2E}} end-to-end cases exist because the purchase is the one flow
       whose whole value is that the separate parts hold together, and because
       one of them is the only place where the interface and the API are made to
       answer the same question.
-<!--[end e2e]-->
+<!--[end e2e_pair]-->
+<!--[if e2e_one]-->
+      The one end-to-end case exists because a flow that crosses both doors is
+      the only place where the interface and the API can be made to answer the
+      same question, and because the purchase is the one flow whose whole value
+      is that the separate parts hold together.
+<!--[end e2e_one]-->
+<!--[if e2e_many]-->
+      The {{E2E}} end-to-end cases exist because the purchase is the one flow
+      whose whole value is that the separate parts hold together, and because
+      they are the only place where the interface and the API are made to
+      answer the same question.
+<!--[end e2e_many]-->
     </p>
     <div class="aside">
       <h3>What this suite deliberately does not cover</h3>

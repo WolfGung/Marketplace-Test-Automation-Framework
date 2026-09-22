@@ -411,13 +411,20 @@ def build_site(
             Path(assets_dir) / "ci-pipeline.svg", out_dir / "assets" / "ci-pipeline.svg"
         ),
         "run": bool(safe_run_url),
-        # The page describes the two end-to-end cases in words, and those words
-        # are false in front of a zero. A run without them is not what gets
-        # published -- the publish job needs the browser leg, which is where
-        # they live -- but "0 end-to-end: one that places an order and one
-        # that..." is exactly the self-contradiction this page exists to avoid,
-        # so the prose is dropped rather than left standing over the figure.
-        "e2e": summary.by_layer.get("e2e", 0) > 0,
+        # The page describes the end-to-end cases in words, and the words have
+        # to be true of the number standing beside them. The suite has two
+        # today and the prose is written for exactly two -- "the end-to-end
+        # pair is one order and one check" -- so it is selected by the count
+        # rather than by "more than none": over a 1 it would read "1
+        # end-to-end. The end-to-end pair is...", and over a 0 the whole
+        # sentence would describe cases that did not run. A run without them
+        # is not what gets published (the publish job needs the browser leg,
+        # which is where they live), but a page that contradicts its own
+        # figure is the one thing this page exists to avoid, so each count
+        # gets prose that is true of it and a 0 gets none.
+        "e2e_one": summary.by_layer.get("e2e", 0) == 1,
+        "e2e_pair": summary.by_layer.get("e2e", 0) == 2,
+        "e2e_many": summary.by_layer.get("e2e", 0) > 2,
         "product_skipped": summary.product.skipped > 0,
         "product_unknown": summary.product.unknown > 0,
         "product_flaky": summary.product.flaky > 0,
