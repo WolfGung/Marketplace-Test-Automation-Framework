@@ -158,3 +158,13 @@ docker compose run --rm tests pytest -m api
 ## Markers
 
 `api`, `ui`, `e2e`, `smoke`, `negative`, `integration`
+
+## Cross-browser
+
+The engine is a setting (`BROWSER`, read into `Settings.browser`), so the whole browser suite runs on Firefox or WebKit without a code change:
+
+```bash
+BROWSER=firefox pytest -m "ui or e2e"
+```
+
+CI has a `browsers` job that does exactly that on all three engines, and it runs **only on manual dispatch** — not on a push, not on the schedule. The application under test belongs to somebody else and the suite creates real accounts on it; no assertion here is about how a page renders in one engine versus another, so running every push three times over would triple that traffic to learn nothing. It is a question worth asking deliberately — after a Playwright upgrade, when a locator changes — which is when the button gets pressed.

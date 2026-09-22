@@ -113,6 +113,58 @@ jobs:
           path: traces
           if-no-files-found: ignore
 
+  browsers:
+    # The same browser suite on all three engines, and only when somebody asks
+    # for it: `workflow_dispatch` is the one trigger listed here, so a push, a
+    # pull request and the nightly schedule never start it.
+    #
+    # Not a matter of runner minutes. The application under test is a public
+    # demo site belonging to somebody else, the suite already creates and
+    # deletes real accounts on it, and running every push three times over
+    # would triple that traffic to learn nothing: no assertion in this suite is
+    # about how a page renders in one engine versus another, so the second and
+    # third leg answer the same question the first already answered. The engine
+    # is a setting (`Settings.browser`, read from `BROWSER`), and the question
+    # "does the suite still run on Firefox and WebKit" is worth asking
+    # deliberately -- after a Playwright upgrade, when a locator changes,
+    # before showing the project to somebody -- which is exactly when a person
+    # presses the button.
+    #
+    # `fail-fast: false` because the point is which engines pass. Cancelling
+    # WebKit because Firefox failed would throw away the half of the answer
+    # that is not yet known.
+    name: Browser suite on ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    needs: reachable
+    if: github.event_name == 'workflow_dispatch' && needs.reachable.outputs.status == '200'
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install .
+      - name: Install Playwright browser
+        run: playwright install --with-deps ${{ matrix.browser }}
+      - name: Run UI and E2E tests on ${{ matrix.browser }}
+        # The engine is chosen by configuration, not by a pytest flag: the
+        # `browser` fixture asks `Settings.browser` for it, and that setting
+        # reads `BROWSER` like every other setting in this project.
+        run: pytest -m "ui or e2e" --alluredir=allure-results
+        env:
+          BROWSER: ${{ matrix.browser }}
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ matrix.browser }}
+          path: allure-results
+
   showcase:
     name: Publish showcase
     runs-on: ubuntu-latest
