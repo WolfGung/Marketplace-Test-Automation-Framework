@@ -117,7 +117,7 @@ playwright show-trace traces/checkout-test_logged_in_user_can_place_an_order.zip
 allure serve allure-results
 ```
 
-Useful Make targets: `make install`, `make test-api`, `make test-ui`, `make test-e2e`, `make test`, `make report`.
+Useful Make targets: `make install`, `make test`, `make test-api`, `make test-ui`, `make test-e2e`, `make test-smoke`, `make report`, `make lint`.
 
 ## Docker
 
@@ -140,6 +140,10 @@ Two things worth knowing, both found by running it rather than by reading it. Th
 
 ## Configuration
 
+Every setting in the project is here: `src/ecom_taf/config/settings.py` reads
+these names and nothing else, `.env.example` lists the same set, and each is
+read from the environment or from a `.env` beside it.
+
 | Variable | Default | Description |
 | --- | --- | --- |
 | `TEST_ENV` | `prod` | Named environment from `environments.yaml` |
@@ -147,6 +151,12 @@ Two things worth knowing, both found by running it rather than by reading it. Th
 | `API_BASE_URL` | `https://www.automationexercise.com/api` | REST API |
 | `HEADLESS` | `true` | Playwright headless mode |
 | `BROWSER` | `chromium` | `chromium`, `firefox` or `webkit` |
+| `SLOW_MO_MS` | `0` | Pause between Playwright actions, for watching a run |
+| `DEFAULT_TIMEOUT_MS` | `15000` | Playwright's per-action timeout |
+| `HTTP_TIMEOUT_S` | `20` | `httpx` timeout for the API layer |
+| `RECORD_VIDEO` | `false` | Record the end-to-end cases: a WebM and a Playwright trace each |
+| `VIDEO_DIR` | `videos` | Where those recordings are written |
+| `TRACE_DIR` | `traces` | Where those traces are written |
 
 ## Markers
 
