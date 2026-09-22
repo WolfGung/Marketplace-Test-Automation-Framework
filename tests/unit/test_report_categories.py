@@ -39,10 +39,18 @@ def test_categories_reach_the_results_directory(tmp_path) -> None:
     assert (tmp_path / "categories.json").is_file()
 
 
-def test_environment_properties_names_what_a_reader_needs(tmp_path) -> None:
-    """The Environment panel is only useful if it names the run's actual context."""
+def test_environment_properties_names_what_a_reader_needs(tmp_path, monkeypatch) -> None:
+    """The Environment panel is only useful if it names the run's actual context.
+
+    This is the shape outside CI, where nothing qualifies the keys -- so the
+    variable that would qualify them has to be cleared rather than assumed
+    absent. It is set for every step of every GitHub Actions job, including the
+    one that runs this suite, and a test that reads the ambient environment
+    passes or fails on where it happens to be run.
+    """
     from tests.conftest import _write_environment_properties
 
+    monkeypatch.delenv("GITHUB_JOB", raising=False)
     _write_environment_properties(tmp_path)
 
     written = (tmp_path / "environment.properties").read_text(encoding="utf-8")
