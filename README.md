@@ -135,15 +135,22 @@ Useful Make targets: `make install`, `make test-api`, `make test-ui`, `make test
 
 ## Docker
 
+One command, and it needs nothing on the machine but Docker — no Python, no Playwright, no browser:
+
 ```bash
 docker compose run --rm tests
 ```
 
-By default the container runs API + smoke tests. Override the command to run a specific layer:
+The first run builds the image (Python 3.12, this framework, Chromium and the system libraries it needs: a few minutes, roughly 3 GB on disk) and then runs the API layer, writing Allure results to `./allure-results` through the bind mount declared in `docker-compose.yml`. The API layer is the default because it is the one layer that needs no browser, no display and no reachable storefront to be worth running. Pass `--build` to rebuild the image after changing the code.
+
+Any other selection is one argument away, and the browser layers run in the same container because Chromium is already in the image:
 
 ```bash
-docker compose run --rm tests pytest -m api
+docker compose run --rm tests pytest -m ui --alluredir=allure-results
+docker compose run --rm tests pytest tests/unit          # the framework's own checks
 ```
+
+Two things worth knowing, both found by running it rather than by reading it. The container runs as root, so `allure-results/` and everything in it belongs to root on the host — `sudo chown -R "$USER" allure-results` if a local run has to write into the same directory afterwards. And the image copies `allure/`, `showcase/` and `scripts/` in as well as `tests/`: pytest imports the whole `tests/` tree before `-m` selects anything from it, so while those were missing, even `-m api` stopped at collection on an import that has nothing to do with the API.
 
 ## Configuration
 
