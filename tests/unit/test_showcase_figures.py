@@ -108,16 +108,16 @@ CLAIMS: dict[tuple[str, str], tuple[str, ...]] = {
     # and its second is a marker that cuts across all three.
     (COVER, "automated checks"): ("-m", "", "tests/api", "tests/ui", "tests/e2e"),
     (COVER, "of them in the smoke set"): ("-m", "smoke"),
-    # The README's table says the same things in the same order, plus one the
-    # page states in prose rather than in a figure: the checks of the framework
-    # itself, which are every case in tests/unit and are counted apart from the
-    # marketplace because they prove nothing about it.
+    # The README's table says the same things the cover does, in the same
+    # order. It states no count for tests/unit on purpose: that number moves
+    # whenever this file gains a test, which is a fact about the tooling and
+    # not about the marketplace, and a README that changed every time somebody
+    # added a unit test would teach its readers to ignore the failure.
     (README, "The REST API"): ("-m", "", "tests/api"),
     (README, "The browser"): ("-m", "", "tests/ui"),
     (README, "End to end, across both doors"): ("-m", "", "tests/e2e"),
     (README, "The application under test"): ("-m", "", "tests/api", "tests/ui", "tests/e2e"),
     (README, "Of those, the smoke set"): ("-m", "smoke"),
-    (README, "The framework itself"): ("-m", "", "tests/unit"),
 }
 
 

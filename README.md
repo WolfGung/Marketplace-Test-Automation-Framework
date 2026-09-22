@@ -48,9 +48,8 @@ Counted by `pytest --collect-only`, and pinned by `tests/unit/test_showcase_figu
 | End to end, across both doors | 2 | `tests/e2e` |
 | The application under test | 24 | the three rows above |
 | Of those, the smoke set | 5 | `-m smoke` |
-| The framework itself | 104 | `tests/unit` |
 
-The last row is counted apart from the rest on purpose: those checks prove things about this project's own tooling — its settings, the diagnostics captured when a browser test fails, the report's failure grouping, the build of the published page — and nothing about the marketplace. They are counted at all because the tooling that produces the report is tested too.
+Those are the checks of the marketplace, and they are the only ones counted — here, on the published page, and in the figures. The project also carries checks over its own tooling in [`tests/unit/`](tests/unit): its settings, the diagnostics captured when a browser test fails, the report's failure grouping, the build of the published page, and the pins that keep every number above honest. They are deliberately left out of the arithmetic, because they prove nothing about the application under test.
 
 A check sits at the lowest layer that can still prove the thing that matters. Product listings, search results, account creation and deletion and the answers each gives to input it should reject are data rules, so they are asserted against the REST API, where a failure names its own cause. Only behaviour a person can see is driven through a browser. The end-to-end pair exists because the purchase is the one flow whose whole value is that the separate parts hold together.
 
@@ -80,16 +79,7 @@ tests/
   unit/                # checks of this framework, not of the marketplace
 ```
 
-The framework is designed with maintainability and scalability in mind:
-
-- Clear separation between test layers
-- Reusable fixtures and utilities
-- Page Objects for UI interactions
-- API clients for backend communication
-- Centralized test configuration
-- Environment-based configuration
-- Independent and parameterized test scenarios
-- Automated test execution in CI/CD
+That split is the four decisions above in directory form: a test module holds assertions and nothing else, everything a test reuses sits under `src/ecom_taf/` where a change in the application lands once, and `tests/unit/` checks that framework rather than the marketplace.
 
 Business status codes for this AUT often live in JSON `responseCode` even when HTTP status is 200. The API client normalizes that so tests assert on the real result, not only the transport layer.
 
@@ -106,20 +96,6 @@ The test suite includes realistic marketplace workflows such as:
 - API validation
 - UI/API cross-validation
 - Negative and boundary scenarios
-
-## Project Goals
-
-This project demonstrates practical **Senior SDET / Test Automation Engineering** skills rather than a collection of isolated automated tests.
-
-The main focus is on:
-
-- Test automation architecture
-- Maintainable and reusable test code
-- Multi-layer testing
-- API + UI + E2E coverage
-- CI/CD integration
-- Test observability and reporting
-- Scalable automation practices
 
 ## Setup
 
