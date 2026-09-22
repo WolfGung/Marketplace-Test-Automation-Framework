@@ -97,6 +97,13 @@ CLAIMS: dict[tuple[str, str], tuple[str, ...]] = {
     ("architecture.svg", "integration"): ("-m", "integration"),
     ("ci-pipeline.svg", "API suite"): ("-m", "api"),
     ("ci-pipeline.svg", "browser suite"): ("-m", "ui or e2e"),
+    # The cross-browser job runs the browser suite's own selection again on
+    # each of three engines, so it states the same count for the same reason.
+    # The figure's fourth job, the framework's own checks, states no count on
+    # purpose: that number moves whenever a unit test is added, which is a fact
+    # about the tooling and not about the marketplace -- the same reason the
+    # README's coverage table leaves it out.
+    ("ci-pipeline.svg", "cross-browser suite"): ("-m", "ui or e2e"),
     # The cover's three cards are the three test directories, one per card, and
     # they are counted the same way the architecture figure counts them.
     (COVER, "REST API"): ("-m", "", "tests/api"),

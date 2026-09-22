@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 740" width="860" height="740"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 920" width="900" height="920"
      role="img" aria-labelledby="ci-title ci-desc"
      font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
   <title id="ci-title">What CI does with every change</title>
-  <desc id="ci-desc">One workflow with four triggers: a push to main, a pull request, a nightly run at 06:00 UTC and a manual dispatch. All four take the same path. A probe asks the storefront for a status code with a thirty-second timeout. The API suite, fourteen cases, runs whatever the probe answered. The browser suite, ten cases selected by the ui or e2e markers, runs only when the probe answered HTTP 200; otherwise it is skipped rather than failed and the run posts a notice saying what the site answered. Both suites leave allure-results behind, and the browser run also leaves the video of the order when recording is switched on. On main those same artefacts go on to restore the Allure history from the gh-pages branch, generate the report, build this page from the run's own results and publish to gh-pages, which GitHub Pages serves. The nightly trigger is a watch on a site this project does not control.</desc>
+  <desc id="ci-desc">One workflow with four triggers: a push to main, a pull request, a nightly run at 06:00 UTC and a manual dispatch, whose form carries a cross-browser tick. Every trigger starts a probe and the same three suites. The probe asks the storefront for a status code with a thirty-second timeout. Two suites are not gated on it: the API suite, fourteen cases, and the framework's own checks, which run pytest over tests/unit — the pins that hold every number on this page, on the cover and in the README to what pytest collects — and which touch the marketplace not at all and write no Allure results on purpose. The browser suite, ten cases selected by the ui or e2e markers, runs only when the probe answered HTTP 200; otherwise it is skipped rather than failed and the run posts a notice saying what the site answered. A fourth job runs those same ten cases on chromium, firefox and webkit, and only on a manual run with the cross-browser box ticked. The API and browser suites leave allure-results behind, and the browser run also leaves the video of the order and the Playwright trace of it. On main, and only once the API suite, the browser suite and the framework checks have all passed, those artefacts go on to restore the Allure history from the gh-pages branch, generate the report, build this page from the run's own results and publish to gh-pages, which GitHub Pages serves. Because publication waits for all three, the page that is published always carries a complete passing run.</desc>
 
   <!-- The figure is referenced through <img>, so it cannot inherit a colour
        from the host page: it carries its own light plate and dark ink, and
@@ -30,109 +30,135 @@
     </marker>
   </defs>
 
-  <rect class="plate" x="0" y="0" width="860" height="740"/>
+  <rect class="plate" x="0" y="0" width="900" height="920"/>
 
   <text class="h"   x="24" y="32">What CI does with every change</text>
-  <text class="sub" x="24" y="54">One workflow, four triggers. The API suite runs whatever the site answers; the browser suite runs only if it answered.</text>
+  <text class="sub" x="24" y="54">Four triggers, six jobs. Two suites run whatever the site answers, one waits for it, one runs only when it is asked for.</text>
 
   <!-- ================= lane 1: every run ================= -->
-  <rect class="zone" x="24" y="78" width="812" height="338" rx="10"/>
+  <rect class="zone" x="24" y="78" width="852" height="500" rx="10"/>
 
-  <rect class="box" x="40" y="112" width="156" height="76" rx="8"/>
-  <text class="t2" x="118" y="142" text-anchor="middle">push to main</text>
-  <text class="m"  x="118" y="166" text-anchor="middle">or a pull request</text>
+  <rect class="box" x="40" y="116" width="160" height="68" rx="8"/>
+  <text class="t2" x="120" y="144" text-anchor="middle">push to main</text>
+  <text class="m"  x="120" y="166" text-anchor="middle">or a pull request</text>
 
-  <rect class="box" x="40" y="204" width="156" height="100" rx="8"/>
-  <text class="t2" x="118" y="232" text-anchor="middle">nightly 06:00 UTC</text>
-  <text class="m"  x="118" y="254" text-anchor="middle">cron 0 6 * * *</text>
-  <text class="m"  x="118" y="276" text-anchor="middle">a watch on a site</text>
-  <text class="m"  x="118" y="294" text-anchor="middle">we do not control</text>
+  <rect class="box" x="40" y="196" width="160" height="88" rx="8"/>
+  <text class="t2" x="120" y="224" text-anchor="middle">nightly 06:00 UTC</text>
+  <text class="m"  x="120" y="246" text-anchor="middle">cron 0 6 * * *</text>
+  <text class="m"  x="120" y="264" text-anchor="middle">a watch on a site</text>
+  <text class="m"  x="120" y="282" text-anchor="middle">we do not control</text>
 
-  <rect class="box" x="40" y="320" width="156" height="76" rx="8"/>
-  <text class="t2" x="118" y="350" text-anchor="middle">manual run</text>
-  <text class="m"  x="118" y="374" text-anchor="middle">workflow_dispatch</text>
+  <rect class="box" x="40" y="296" width="160" height="88" rx="8"/>
+  <text class="t2" x="120" y="324" text-anchor="middle">manual run</text>
+  <text class="m"  x="120" y="346" text-anchor="middle">workflow_dispatch</text>
+  <text class="m"  x="120" y="364" text-anchor="middle">ticking cross-browser</text>
+  <text class="m"  x="120" y="382" text-anchor="middle">adds the job below</text>
 
-  <path class="link" d="M196,150 L208,150"/>
-  <path class="link" d="M196,254 L208,254"/>
-  <path class="link" d="M196,358 L208,358"/>
-  <path class="link" d="M208,150 L208,358"/>
+  <path class="link" d="M200,150 L214,150"/>
+  <path class="link" d="M200,240 L214,240"/>
+  <path class="link" d="M200,340 L214,340"/>
+  <path class="link" d="M214,150 L214,340"/>
 
-  <rect class="box" x="232" y="152" width="180" height="88" rx="8"/>
-  <text class="t2" x="322" y="180" text-anchor="middle">probe the storefront</text>
-  <text class="m"  x="322" y="202" text-anchor="middle">curl, 30 s timeout</text>
-  <text class="m"  x="322" y="220" text-anchor="middle">automationexercise.com</text>
+  <rect class="box" x="246" y="196" width="180" height="86" rx="8"/>
+  <text class="t2" x="336" y="224" text-anchor="middle">probe the storefront</text>
+  <text class="m"  x="336" y="246" text-anchor="middle">curl, 30 s timeout</text>
+  <text class="m"  x="336" y="264" text-anchor="middle">automationexercise.com</text>
 
-  <path class="gate" d="M492,152 L556,196 L492,240 L428,196 z"/>
-  <text class="b" x="492" y="201" text-anchor="middle">HTTP 200?</text>
+  <path class="gate" d="M516,195 L580,239 L516,283 L452,239 z"/>
+  <text class="b" x="516" y="244" text-anchor="middle">HTTP 200?</text>
 
-  <rect class="box" x="612" y="152" width="200" height="88" rx="8"/>
-  <text class="t2" x="712" y="180" text-anchor="middle">skipped, not failed</text>
-  <text class="m"  x="712" y="202" text-anchor="middle">the run posts a ::notice</text>
-  <text class="m"  x="712" y="220" text-anchor="middle">saying what answered</text>
+  <rect class="box" x="636" y="196" width="200" height="86" rx="8"/>
+  <text class="t2" x="736" y="224" text-anchor="middle">skipped, not failed</text>
+  <text class="m"  x="736" y="246" text-anchor="middle">the run posts a ::notice</text>
+  <text class="m"  x="736" y="264" text-anchor="middle">saying what answered</text>
 
-  <rect class="box" x="232" y="276" width="180" height="106" rx="8"/>
-  <text class="t2" x="322" y="304" text-anchor="middle">API suite</text>
-  <text class="m"  x="322" y="326" text-anchor="middle">pytest -m api</text>
-  <text class="b"  x="322" y="348" text-anchor="middle">14 cases</text>
-  <text class="m"  x="322" y="370" text-anchor="middle">no gate: runs either way</text>
+  <path class="arrow" d="M214,239 L242,239"/>
+  <path class="arrow" d="M426,239 L448,239"/>
+  <path class="arrow" d="M580,239 L632,239"/>
+  <text class="m" x="606" y="231" text-anchor="middle">not 200</text>
 
-  <rect class="box" x="612" y="276" width="200" height="106" rx="8"/>
-  <text class="t2" x="712" y="304" text-anchor="middle">browser suite</text>
-  <text class="m"  x="712" y="326" text-anchor="middle">pytest -m "ui or e2e"</text>
-  <text class="b"  x="712" y="348" text-anchor="middle">10 cases</text>
-  <text class="m"  x="712" y="370" text-anchor="middle">installs chromium first</text>
+  <!-- The two ungated jobs hang off the trigger bus rather than off the gate:
+       neither of them asks the marketplace anything it has to be up for. -->
+  <path class="link" d="M214,340 L214,396 L354,396"/>
+  <path class="link" d="M214,396 L138,396"/>
+  <path class="arrow" d="M138,396 L138,420"/>
+  <path class="arrow" d="M354,396 L354,420"/>
 
-  <path class="arrow" d="M208,196 L228,196"/>
-  <path class="arrow" d="M208,320 L228,320"/>
+  <!-- The two that drive a browser hang off the 200 branch. -->
+  <path class="link" d="M516,283 L516,396 L782,396"/>
+  <path class="arrow" d="M570,396 L570,420"/>
+  <path class="arrow" d="M782,396 L782,420"/>
+  <text class="m" x="524" y="320">200</text>
 
-  <path class="arrow" d="M412,196 L424,196"/>
-  <path class="arrow" d="M556,196 L608,196"/>
-  <text class="m" x="582" y="188" text-anchor="middle">not 200</text>
+  <rect class="box" x="40" y="424" width="196" height="126" rx="8"/>
+  <text class="t2" x="138" y="452" text-anchor="middle">API suite</text>
+  <text class="m"  x="138" y="474" text-anchor="middle">pytest -m api</text>
+  <text class="b"  x="138" y="496" text-anchor="middle">14 cases</text>
+  <text class="m"  x="138" y="518" text-anchor="middle">no gate: runs either way</text>
+  <text class="m"  x="138" y="536" text-anchor="middle">a failure is the result</text>
 
-  <path class="arrow" d="M492,240 L492,320 L608,320"/>
-  <text class="m" x="500" y="268">200</text>
+  <rect class="box" x="256" y="424" width="196" height="126" rx="8"/>
+  <text class="t2" x="354" y="452" text-anchor="middle">framework checks</text>
+  <text class="m"  x="354" y="474" text-anchor="middle">pytest tests/unit</text>
+  <text class="m"  x="354" y="496" text-anchor="middle">the pins on every number</text>
+  <text class="m"  x="354" y="518" text-anchor="middle">no gate: no site traffic</text>
+  <text class="m"  x="354" y="536" text-anchor="middle">writes no results</text>
+
+  <rect class="box" x="472" y="424" width="196" height="126" rx="8"/>
+  <text class="t2" x="570" y="452" text-anchor="middle">browser suite</text>
+  <text class="m"  x="570" y="474" text-anchor="middle">pytest -m "ui or e2e"</text>
+  <text class="b"  x="570" y="496" text-anchor="middle">10 cases</text>
+  <text class="m"  x="570" y="518" text-anchor="middle">only if the probe said 200</text>
+  <text class="m"  x="570" y="536" text-anchor="middle">records the order</text>
+
+  <rect class="box" x="688" y="424" width="188" height="126" rx="8"/>
+  <text class="t2" x="782" y="452" text-anchor="middle">cross-browser suite</text>
+  <text class="m"  x="782" y="474" text-anchor="middle">the same selection</text>
+  <text class="b"  x="782" y="496" text-anchor="middle">10 cases</text>
+  <text class="m"  x="782" y="518" text-anchor="middle">chromium · firefox · webkit</text>
+  <text class="m"  x="782" y="536" text-anchor="middle">manual run, tick required</text>
 
   <!-- ================= the bridge: what the run leaves behind ================= -->
-  <rect class="box" x="300" y="452" width="340" height="76" rx="8"/>
-  <text class="t2" x="470" y="478" text-anchor="middle">what the run leaves behind</text>
-  <text class="m"  x="470" y="500" text-anchor="middle">allure-results-api · allure-results-ui</text>
-  <text class="m"  x="470" y="518" text-anchor="middle">and the video of the order when recording is on</text>
+  <rect class="box" x="290" y="612" width="360" height="76" rx="8"/>
+  <text class="t2" x="470" y="638" text-anchor="middle">what the run leaves behind</text>
+  <text class="m"  x="470" y="660" text-anchor="middle">allure-results-api · allure-results-ui</text>
+  <text class="m"  x="470" y="678" text-anchor="middle">the video of the order, and the Playwright trace of it</text>
 
-  <path class="arrow" d="M322,384 L322,448"/>
-  <path class="arrow" d="M712,384 L712,430 L600,430 L600,448"/>
+  <path class="arrow" d="M138,552 L138,588 L330,588 L330,608"/>
+  <path class="arrow" d="M570,552 L570,588 L610,588 L610,608"/>
 
   <!-- ================= lane 2: the same run publishes itself ================= -->
-  <rect class="zone" x="24" y="556" width="812" height="160" rx="10"/>
+  <rect class="zone" x="24" y="712" width="852" height="180" rx="10"/>
 
-  <rect class="box" x="40" y="592" width="180" height="106" rx="8"/>
-  <text class="t2" x="130" y="620" text-anchor="middle">restore the history</text>
-  <text class="m"  x="130" y="642" text-anchor="middle">from the gh-pages</text>
-  <text class="m"  x="130" y="660" text-anchor="middle">branch, so the trend</text>
-  <text class="m"  x="130" y="678" text-anchor="middle">survives the run</text>
+  <rect class="box" x="40" y="752" width="192" height="112" rx="8"/>
+  <text class="t2" x="136" y="780" text-anchor="middle">restore the history</text>
+  <text class="m"  x="136" y="802" text-anchor="middle">from the gh-pages branch</text>
+  <text class="m"  x="136" y="820" text-anchor="middle">so the trend survives</text>
+  <text class="m"  x="136" y="838" text-anchor="middle">the run that renews it</text>
 
-  <rect class="box" x="240" y="592" width="180" height="106" rx="8"/>
-  <text class="t2" x="330" y="620" text-anchor="middle">generate the report</text>
-  <text class="m"  x="330" y="642" text-anchor="middle">Allure, over this run</text>
-  <text class="m"  x="330" y="660" text-anchor="middle">and the ones before</text>
+  <rect class="box" x="252" y="752" width="192" height="112" rx="8"/>
+  <text class="t2" x="348" y="780" text-anchor="middle">generate the report</text>
+  <text class="m"  x="348" y="802" text-anchor="middle">Allure, over this run</text>
+  <text class="m"  x="348" y="820" text-anchor="middle">and the ones before</text>
 
-  <rect class="box" x="440" y="592" width="180" height="106" rx="8"/>
-  <text class="t2" x="530" y="620" text-anchor="middle">build this page</text>
-  <text class="m"  x="530" y="642" text-anchor="middle">showcase/build.py, from</text>
-  <text class="m"  x="530" y="660" text-anchor="middle">the run's own results</text>
+  <rect class="box" x="464" y="752" width="192" height="112" rx="8"/>
+  <text class="t2" x="560" y="780" text-anchor="middle">build this page</text>
+  <text class="m"  x="560" y="802" text-anchor="middle">showcase/build.py, from</text>
+  <text class="m"  x="560" y="820" text-anchor="middle">the run's own results</text>
 
-  <rect class="box" x="640" y="592" width="180" height="106" rx="8"/>
-  <text class="t2" x="730" y="620" text-anchor="middle">publish to gh-pages</text>
-  <text class="m"  x="730" y="642" text-anchor="middle">GitHub Pages serves</text>
-  <text class="m"  x="730" y="660" text-anchor="middle">the page and the report</text>
+  <rect class="box" x="676" y="752" width="192" height="112" rx="8"/>
+  <text class="t2" x="772" y="780" text-anchor="middle">publish to gh-pages</text>
+  <text class="m"  x="772" y="802" text-anchor="middle">GitHub Pages serves</text>
+  <text class="m"  x="772" y="820" text-anchor="middle">the page and the report</text>
 
-  <path class="arrow" d="M220,645 L238,645"/>
-  <path class="arrow" d="M420,645 L438,645"/>
-  <path class="arrow" d="M620,645 L638,645"/>
+  <path class="arrow" d="M232,808 L248,808"/>
+  <path class="arrow" d="M444,808 L460,808"/>
+  <path class="arrow" d="M656,808 L672,808"/>
 
-  <path class="arrow" d="M470,530 L470,546 L130,546 L130,588"/>
-  <text class="m" x="486" y="550">on main, the same run's artefacts</text>
+  <path class="arrow" d="M470,690 L470,702 L136,702 L136,748"/>
+  <text class="m" x="486" y="706">on main, once all three suites are green</text>
   <!-- Painted last, over a knockout of the lane's own fill: a connector that
        crosses a word passes behind it rather than through it. -->
   <text class="lab" x="40" y="100">EVERY RUN — GITHUB ACTIONS, .github/workflows/ci.yml</text>
-  <text class="lab" x="40" y="578">ON main ONLY — THE SAME RUN PUBLISHES THIS PAGE</text>
+  <text class="lab" x="40" y="734">ON main ONLY — AND ONLY AFTER ALL THREE SUITES PASSED</text>
 </svg>
