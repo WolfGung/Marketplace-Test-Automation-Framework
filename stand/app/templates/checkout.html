@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<h2>Address Details</h2>
+<ul id="address_delivery">
+  <li>Your delivery address</li>
+  <li>{{ account.title }}. {{ account.firstname }} {{ account.lastname }}</li>
+  <li>{{ account.company }}</li>
+  <li>{{ account.address1 }}</li>
+  <li>{{ account.address2 }}</li>
+  <li>{{ account.city }} {{ account.state }} {{ account.zipcode }}</li>
+  <li>{{ account.country }}</li>
+  <li>{{ account.mobile_number }}</li>
+</ul>
+<h2>Review Your Order</h2>
+<table>
+  <tbody>
+  {% for line in lines %}
+  <tr><td>{{ line.name }}</td><td>{{ line.price }}</td><td>{{ line.quantity }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p><a class="btn" href="/payment">Place Order</a></p>
+{% endblock %}

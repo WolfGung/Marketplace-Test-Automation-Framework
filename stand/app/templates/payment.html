@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Payment{% endblock %}
+{% block content %}
+<h2>Payment</h2>
+<form method="post" action="/payment">
+  <label>Name on Card <input data-qa="name-on-card" name="name_on_card" type="text"></label>
+  <label>Card Number <input data-qa="card-number" name="card_number" type="text"></label>
+  <label>CVC <input data-qa="cvc" name="cvc" type="text"></label>
+  <label>Expiration <input data-qa="expiry-month" name="expiry_month" type="text" placeholder="MM"> <input data-qa="expiry-year" name="expiry_year" type="text" placeholder="YYYY"></label>
+  <button data-qa="pay-button" type="submit" class="btn">Pay and Confirm Order</button>
+</form>
+{% endblock %}

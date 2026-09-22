@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Signup{% endblock %}
+{% block content %}
+<form method="post" action="/signup/create">
+  <h2>Enter Account Information</h2>
+  <label><input type="radio" name="title" value="Mr"> Mr.</label>
+  <label><input type="radio" name="title" value="Mrs"> Mrs.</label>
+  <label>Name <input data-qa="name" name="name" type="text" value="{{ pending.name }}"></label>
+  <label>Email <input data-qa="email" name="email" type="email" value="{{ pending.email }}" readonly></label>
+  <label>Password <input data-qa="password" name="password" type="password"></label>
+  <label>Date of birth
+    <select data-qa="days" name="birth_date">{% for day in days %}<option value="{{ day }}">{{ day }}</option>{% endfor %}</select>
+    <select data-qa="months" name="birth_month">{% for month in months %}<option value="{{ month }}">{{ month }}</option>{% endfor %}</select>
+    <select data-qa="years" name="birth_year">{% for year in years %}<option value="{{ year }}">{{ year }}</option>{% endfor %}</select>
+  </label>
+  <h2>Address Information</h2>
+  <label>First name <input data-qa="first_name" name="first_name" type="text"></label>
+  <label>Last name <input data-qa="last_name" name="last_name" type="text"></label>
+  <label>Company <input data-qa="company" name="company" type="text"></label>
+  <label>Address <input data-qa="address" name="address" type="text"></label>
+  <label>Address 2 <input data-qa="address2" name="address2" type="text"></label>
+  <label>Country
+    <select data-qa="country" name="country">
+      {% for country in ["United States", "India", "Canada", "Australia", "New Zealand", "Singapore"] %}<option value="{{ country }}">{{ country }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>State <input data-qa="state" name="state" type="text"></label>
+  <label>City <input data-qa="city" name="city" type="text"></label>
+  <label>Zipcode <input data-qa="zipcode" name="zipcode" type="text"></label>
+  <label>Mobile number <input data-qa="mobile_number" name="mobile_number" type="text"></label>
+  <button data-qa="create-account" type="submit" class="btn">Create Account</button>
+</form>
+{% endblock %}

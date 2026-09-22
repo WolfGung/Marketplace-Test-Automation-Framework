@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Products{% endblock %}
+{% block content %}
+<form method="get" action="/products">
+  <input id="search_product" name="search" type="text" placeholder="Search Product">
+  <button id="submit_search" type="submit" class="btn">Search</button>
+</form>
+{% include "_products.html" %}
+{% endblock %}

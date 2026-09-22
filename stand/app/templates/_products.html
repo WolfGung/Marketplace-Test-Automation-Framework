@@ -1,0 +1,17 @@
+<div class="features_items">
+  <h2 class="title">{{ title }}</h2>
+  {% for product in products %}
+  <div class="product-image-wrapper">
+    <div class="single-products">
+      <div class="productinfo">
+        <h2>{{ product.price }}</h2>
+        <p>{{ product.name }}</p>
+        <a class="btn add-to-cart" href="/add_to_cart/{{ product.id }}">Add to cart</a>
+      </div>
+    </div>
+    <div class="choose">
+      <a href="/product_details/{{ product.id }}">View Product</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>

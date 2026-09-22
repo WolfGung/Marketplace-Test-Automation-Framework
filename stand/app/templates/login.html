@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<div class="login-form">
+  <form method="post" action="/login">
+    <h2>Login to your account</h2>
+    {% if login_error %}<p class="error">{{ login_error }}</p>{% endif %}
+    <input data-qa="login-email" name="email" type="email" placeholder="Email Address">
+    <input data-qa="login-password" name="password" type="password" placeholder="Password">
+    <button data-qa="login-button" type="submit" class="btn">Log In</button>
+  </form>
+</div>
+<div class="signup-form">
+  <form method="post" action="/signup">
+    <h2>New User Signup!</h2>
+    {% if signup_error %}<p class="error">{{ signup_error }}</p>{% endif %}
+    <input data-qa="signup-name" name="name" type="text" placeholder="Name">
+    <input data-qa="signup-email" name="email" type="email" placeholder="Email Address">
+    <button data-qa="signup-button" type="submit" class="btn">Sign Up</button>
+  </form>
+</div>
+{% endblock %}

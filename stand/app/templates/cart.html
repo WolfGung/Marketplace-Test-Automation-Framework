@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Cart{% endblock %}
+{% block content %}
+<h2>Shopping Cart</h2>
+{% if lines %}
+<div id="cart_info">
+  <table>
+    <tbody>
+    {% for line in lines %}
+    <tr>
+      <td class="cart_description"><h4><a href="/product_details/{{ line.id }}">{{ line.name }}</a></h4><p>{{ line.category.category }}</p></td>
+      <td class="cart_price"><p>{{ line.price }}</p></td>
+      <td class="cart_quantity"><button class="btn" disabled>{{ line.quantity }}</button></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p><a class="btn check_out" href="/checkout">Proceed To Checkout</a></p>
+{% else %}
+<p id="empty_cart">Cart is empty! <a href="/products">Click here</a> to buy products.</p>
+{% endif %}
+{% endblock %}

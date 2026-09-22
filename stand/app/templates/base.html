@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Marketplace stand{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
+    header { display: flex; gap: 1.5rem; align-items: center; padding: 1rem 2rem; background: #fff; border-bottom: 1px solid #e2e8f0; }
+    header nav a { margin-right: 1rem; }
+    main { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+    .features_items { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .features_items h2.title { grid-column: 1 / -1; }
+    .product-image-wrapper { border: 1px solid #e2e8f0; background: #fff; padding: 1rem; }
+    .productinfo h2 { color: #b45309; margin: 0 0 .25rem; }
+    .productinfo p { margin: 0 0 .5rem; }
+    .btn { display: inline-block; padding: .4rem .8rem; border: 1px solid #0f172a; border-radius: 4px; text-decoration: none; color: #0f172a; background: #fff; cursor: pointer; }
+    .btn-success { border-color: #15803d; color: #15803d; }
+    .modal { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); display: flex; align-items: center; justify-content: center; }
+    .modal-content { background: #fff; padding: 1.5rem; border-radius: 6px; min-width: 320px; }
+    .modal-footer { margin-top: 1rem; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    td, th { border: 1px solid #e2e8f0; padding: .5rem; text-align: left; }
+    form label { display: block; margin: .5rem 0 .25rem; }
+    input, select { padding: .35rem; }
+    p.error { color: #b91c1c; }
+  </style>
+</head>
+<body>
+<header>
+  <a href="/"><img src="/static/logo.svg" alt="Website for automation practice" width="200" height="40"></a>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/products">Products</a>
+    <a href="/view_cart">Cart</a>
+    {% if logged_in_as %}
+      <a href="#">Logged in as {{ logged_in_as }}</a>
+      <a href="/logout">Logout</a>
+    {% else %}
+      <a href="/login">Signup / Login</a>
+    {% endif %}
+  </nav>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+{% if added %}{% include "_modal.html" %}{% endif %}
+</body>
+</html>
