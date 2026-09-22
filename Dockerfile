@@ -27,6 +27,12 @@ COPY tests ./tests
 #               pytest collects tests/stand before -m selects anything.
 #   .github/    tests/unit/test_ci_targets.py reads ci.yml straight off disk
 #               to check the pipeline's own shape.
+#   Makefile    read by tests/unit/test_setup_instructions.py, which holds the
+#               README's install line to the one `make install` runs.
+#   the report screenshot
+#               measured by tests/unit/test_readme_images.py: every picture the
+#               README shows has to exist and be the size its exporter writes,
+#               and this is the only one of them outside showcase/.
 # pytest collects the whole `tests/` tree before it applies `-m`, so a missing
 # import in `tests/unit` aborted the session before a single API test ran --
 # `-m api` inside the container failed on a file that has nothing to do with
@@ -37,6 +43,8 @@ COPY scripts ./scripts
 COPY stand ./stand
 COPY .github ./.github
 COPY .env.example ./.env.example
+COPY Makefile ./Makefile
+COPY allure-report-screenshot.png ./allure-report-screenshot.png
 
 # The API layer by default: it is the one layer that needs no browser, no
 # display and no probe of somebody else's site, so `docker compose run --rm

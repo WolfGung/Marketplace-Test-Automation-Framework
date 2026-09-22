@@ -84,7 +84,12 @@ def test_every_setting_is_documented_and_has_an_example() -> None:
 def test_a_value_the_caller_set_survives_the_named_environment(monkeypatch) -> None:
     """A target is a default. What somebody actually set wins over it."""
     monkeypatch.setenv("TEST_ENV", "local")
-    monkeypatch.delenv("BASE_URL", raising=False)
+    # Both are cleared, and `_env_file` is switched off, so what comes out is
+    # what this test set and what the target filled in -- not what the machine
+    # running it happens to export. The container does export them: compose
+    # points the suite at the stand service by address.
+    for name in ("BASE_URL", "API_BASE_URL"):
+        monkeypatch.delenv(name, raising=False)
     settings = Settings(base_url="http://127.0.0.1:8099", _env_file=None)
 
     settings.apply_named_environment()
@@ -108,6 +113,7 @@ def test_a_value_a_dotenv_file_sets_survives_the_named_environment(monkeypatch, 
     """
     monkeypatch.setenv("TEST_ENV", "local")
     monkeypatch.delenv("BASE_URL", raising=False)
+    monkeypatch.delenv("API_BASE_URL", raising=False)
     dotenv = tmp_path / ".env"
     dotenv.write_text("BASE_URL=http://127.0.0.1:8099\n", encoding="utf-8")
 
