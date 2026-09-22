@@ -46,3 +46,9 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+# `showcase` and `scripts` are this repository's own code, not dependencies:
+# without this they land in the third-party block and every module that
+# imports both pytest and showcase is reported as un-sorted.
+known-first-party = ["ecom_taf", "showcase"]

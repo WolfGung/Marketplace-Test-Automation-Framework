@@ -23,4 +23,4 @@ report:
 	allure serve allure-results
 
 lint:
-	ruff check src tests
+	ruff check src tests showcase scripts

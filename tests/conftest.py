@@ -5,7 +5,7 @@ import shutil
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import allure
 import pytest
@@ -26,11 +26,10 @@ from ecom_taf.ui.pages import (
     SignupPage,
 )
 
-
 #: Holds the finished-page's Video handle across the `page` -> `context` teardown
 #: boundary. A StashKey rather than a raw node attribute so it can't collide with
 #: anything another fixture or plugin stores on the same node.
-VIDEO_KEY: pytest.StashKey[Optional[Video]] = pytest.StashKey()
+VIDEO_KEY: pytest.StashKey[Video | None] = pytest.StashKey()
 
 
 #: Failure categories, kept beside the suite and read by Allure out of the
