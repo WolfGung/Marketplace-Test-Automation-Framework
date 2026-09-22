@@ -11,11 +11,15 @@ identical across the owner's projects, and it is committed as
 `guru-profile-banner-1000x250.png`: a second banner that almost matched the
 first would look wrong beside it in the same profile.
 
-Two things this script refuses to do, because both fail silently otherwise:
+Three things this script refuses to do, because each fails silently otherwise:
 
 * photograph an Allure report that is not a complete, passing run. It reads
   the overview's own JSON and compares it with what pytest collects, and says
   what it found when they disagree;
+* photograph a pipeline run that is not green. A picture of a run page is a
+  claim that the pipeline passes, so the claim is read off the page — the
+  status the run shows a visitor, and what every job icon drawn beside it
+  says — rather than taken on the word of whoever chose the URL;
 * leave behind a blank image. Every export is measured back out of the file
   and out of the pixels the browser actually produced, so a template that
   rendered to an empty field is an error rather than a committed picture of
@@ -24,6 +28,14 @@ Two things this script refuses to do, because both fail silently otherwise:
 Usage:
     ~/.local/bin/allure generate allure-results --clean -o site/report
     PYTHONPATH=. python scripts/make-assets.py
+
+The pipeline picture comes from the network and the other two from this
+machine, so each is asked for on its own — refreshing the run photograph does
+not need a report generated locally first:
+
+    PYTHONPATH=. python scripts/make-assets.py --only ci-run --ci-run <run page>
+
+where <run page> is https://github.com/<owner>/<repo>/actions/runs/<id>.
 
 A run that skipped part of the suite has to say so, or the completeness check
 above would reject a report that is exactly what was asked for:
@@ -52,6 +64,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
@@ -74,6 +87,46 @@ PAGES = [
 
 REPORT_DIR = ROOT / "site" / "report"
 
+#: The pipeline, photographed rather than described. The badge at the top of
+#: the README is an image served by somebody else and says one word; the run
+#: page it points at is the evidence, and a reader who is deciding in half a
+#: minute whether to keep reading will look at a picture of it and not follow
+#: a link. It is read logged out, because that is how a visitor reads it.
+CI_RUN_IMAGE = "showcase/images/ci-run.png"
+
+#: The window the run page is read in. At this width it lays the job graph out
+#: beside the job list, which is the arrangement worth photographing; much
+#: narrower and the graph folds underneath.
+CI_RUN_VIEWPORT = (1400, 900)
+
+#: What is kept of that window: the run page's own content, starting below the
+#: marketing header a logged-out visitor is served, which says nothing about
+#: this pipeline. The size is fixed so the picture is the same shape every
+#: time and can be pinned; the job icons are checked to be inside it, so a run
+#: that grew another job is a refusal rather than a row sliced in half.
+CI_RUN_SIZE = (1400, 730)
+
+#: What a job icon is allowed to say for the run to be worth photographing.
+#: GitHub writes each job's state into the icon's accessible name, so this is
+#: the picture read the way a screen reader would announce it. `skipped` is in
+#: here because this pipeline skips jobs on purpose — the cross-browser suite
+#: waits to be asked for — and a skipped job is drawn as such.
+GREEN_JOB_STATES = frozenset({"completed successfully", "skipped"})
+
+#: The word a run page shows under "Status" for a run that passed.
+GREEN_RUN_STATUS = "Success"
+
+#: How long the run page is given to draw itself. It arrives as an application
+#: and fills in afterwards, over somebody else's network.
+CI_RUN_TIMEOUT_SECONDS = 60
+
+#: The pictures this script can take, named for `--only`. The cover and the
+#: report are exported from what is on this machine; the pipeline is read off
+#: a public page.
+COVER_SHOT, REPORT_SHOT, CI_RUN_SHOT = "cover", "report", "ci-run"
+EVERY_PICTURE = (COVER_SHOT, REPORT_SHOT, CI_RUN_SHOT)
+LOCAL_PICTURES = frozenset({COVER_SHOT, REPORT_SHOT})
+
 #: A flat field is one colour everywhere. Real output is not: the cover is a
 #: gradient under type, and the report is a white page under a dark sidebar
 #: and a chart. Both thresholds sit far below what either produces and far
@@ -92,11 +145,17 @@ PROBE_GRID = 200
 PROBE_PAGE = b"<!doctype html><meta charset=utf-8><title>probe</title>"
 
 
-#: The images this script writes, offered back under a prefix of their own.
-#: They are named, not looked up: the request supplies a name to compare
-#: against this mapping and never a path to walk.
-EXPORTS = {name: ROOT / name for _s, name, _w, _h in SHOTS} | {
-    name: ROOT / name for _u, name, _r, _w, _h in PAGES
+#: The images this script writes, offered back under a prefix of their own and
+#: keyed by the file's own name rather than by where in the repository it is
+#: written. They are named, not looked up: the request supplies a name to
+#: compare against this mapping and never a path to walk.
+EXPORTS = {
+    Path(written).name: ROOT / written
+    for written in (
+        *(name for _s, name, _w, _h in SHOTS),
+        *(name for _u, name, _r, _w, _h in PAGES),
+        CI_RUN_IMAGE,
+    )
 }
 EXPORT_PREFIX = "/exports/"
 
@@ -364,6 +423,13 @@ def _require_a_picture(page: Page, base_url: str, name: str, width: int, height:
     the pixels turns all three into a message instead of a commit.
     """
     path = ROOT / name
+    offered = Path(name).name
+    if EXPORTS.get(offered) != path:
+        raise RuntimeError(
+            f"{name} is not the file served back as {EXPORT_PREFIX}{offered}, so the "
+            f"pixels measured below would belong to another picture. Two exports "
+            f"whose paths end in the same file name cannot both be offered."
+        )
     if not path.exists():
         raise RuntimeError(f"{name} was not written, though the screenshot reported no error.")
     actual = _png_size(path)
@@ -372,7 +438,7 @@ def _require_a_picture(page: Page, base_url: str, name: str, width: int, height:
             f"{name} is {actual[0]}x{actual[1]}, not the {width}x{height} it has to be. "
             f"The profile crops anything else, so this file cannot be shipped."
         )
-    distinct, ink = _ink(page, f"{base_url}{EXPORT_PREFIX}{name}")
+    distinct, ink = _ink(page, f"{base_url}{EXPORT_PREFIX}{offered}")
     if distinct < MIN_DISTINCT_COLOURS or ink < MIN_INK_SHARE:
         raise RuntimeError(
             f"{name} is {width}x{height} but essentially blank: a grid of samples found "
@@ -382,6 +448,151 @@ def _require_a_picture(page: Page, base_url: str, name: str, width: int, height:
             f"load, or a page photographed before it painted."
         )
     print(f"  {name}: {width}x{height}, {distinct} colours sampled, {ink:.1%} ink")
+
+
+def _run_page(page: Page) -> dict:
+    """What a workflow run page says about itself, as a visitor reads it.
+
+    Three things, read in one pass so that all three describe the same moment:
+    the value shown under "Status"; what every status icon the page actually
+    draws says, taken from the icon's accessible name, which is what a screen
+    reader would announce about the picture being taken; and where the run
+    page's own content starts, which is where the crop starts. Icons that are
+    in the markup but drawn nowhere — the page carries a second, hidden copy
+    of its job list for narrow windows — are left out, because what is not on
+    the screen is not in the photograph.
+    """
+    return page.evaluate(
+        """() => {
+          const label = Array.from(document.querySelectorAll('span, div, dt')).find(
+            (e) => e.children.length === 0 && (e.textContent || '').trim() === 'Status');
+          const status = label && label.nextElementSibling
+            ? (label.nextElementSibling.textContent || '').trim()
+            : null;
+          const icons = Array.from(document.querySelectorAll('svg[aria-label]'))
+            .map((svg) => ({
+              name: svg.getAttribute('aria-label') || '',
+              box: svg.getBoundingClientRect(),
+            }))
+            .filter((i) => i.name.includes(':') && i.box.width > 0 && i.box.height > 0)
+            .map((i) => ({
+              state: i.name.split(':')[0].trim().toLowerCase(),
+              top: i.box.top + window.scrollY,
+              bottom: i.box.bottom + window.scrollY,
+            }));
+          const main = document.querySelector('.application-main');
+          return {
+            status,
+            icons,
+            content_top: main ? main.getBoundingClientRect().top + window.scrollY : null,
+          };
+        }"""
+    )
+
+
+def _wait_for_the_run_to_be_drawn(page: Page, url: str) -> None:
+    """Wait until the page has drawn a status and at least one job.
+
+    The run page arrives as an application and fills itself in afterwards, so
+    what exists a moment after load is a header with no run in it. Waiting for
+    the two things this picture is about is waiting for the picture to exist —
+    and when it never appears, saying what the page did show beats a selector
+    timing out with nothing to say.
+    """
+    deadline = time.monotonic() + CI_RUN_TIMEOUT_SECONDS
+    while True:
+        found = _run_page(page)
+        if found["status"] and found["icons"]:
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError(
+                f"{url} never drew a run: after {CI_RUN_TIMEOUT_SECONDS}s it shows "
+                f"{found['status'] or 'no status'} and {len(found['icons'])} job "
+                f"icon(s). Either that URL is not a workflow run page, or the page "
+                f"is no longer laid out the way this reader expects."
+            )
+        page.wait_for_timeout(500)
+
+
+def _require_the_run_is_green(found: dict, url: str) -> None:
+    """Refuse to photograph a run that is not passing.
+
+    The same posture as the report check above, for the same reason: this
+    picture is read as a claim that the pipeline passes, and the only honest
+    place to get that claim is the page being photographed. Both halves are
+    read — the status the run reports, and the state of every job drawn beside
+    it — because a state this script has never seen is exactly the case where
+    a green-looking picture would be worth checking by hand.
+    """
+    status = found["status"]
+    if status != GREEN_RUN_STATUS:
+        raise RuntimeError(
+            f'{url} reports Status "{status}", not "{GREEN_RUN_STATUS}". A picture '
+            f"of a run that failed, or of one still going, is the lie this script "
+            f"exists to refuse. Pick a successful run of the workflow — the public "
+            f"API lists them: /repos/<owner>/<repo>/actions/runs"
+            f"?branch=main&status=success&per_page=1"
+        )
+    unknown = sorted({icon["state"] for icon in found["icons"]} - GREEN_JOB_STATES)
+    if unknown:
+        raise RuntimeError(
+            f"{url} draws a job whose state this script does not photograph: "
+            f"{', '.join(unknown)}. Expected one of {', '.join(sorted(GREEN_JOB_STATES))}. "
+            f"If that state belongs in the picture, add it to GREEN_JOB_STATES; "
+            f"otherwise the run is not the green one it looked like."
+        )
+
+
+def _frame(found: dict, url: str) -> dict[str, float]:
+    """Where to cut the picture: the run page's content, at a fixed size."""
+    top = found["content_top"]
+    if top is None:
+        raise RuntimeError(
+            f"{url} holds no `.application-main`, so where the run page's own "
+            f"content starts is unknown. A crop guessed at a fixed offset would "
+            f"quietly photograph the wrong part of the page, so this is a refusal: "
+            f"the page's layout has changed and the crop has to be re-read."
+        )
+    width, height = CI_RUN_SIZE
+    return {"x": 0.0, "y": float(top), "width": float(width), "height": float(height)}
+
+
+def _require_every_job_is_in_frame(found: dict, frame: dict[str, float], url: str) -> None:
+    """Refuse a crop that cuts a job off the picture it is the point of."""
+    bottom = frame["y"] + frame["height"]
+    outside = [i for i in found["icons"] if i["top"] < frame["y"] or i["bottom"] > bottom]
+    if outside:
+        lowest = max(icon["bottom"] for icon in found["icons"])
+        width, height = CI_RUN_SIZE
+        raise RuntimeError(
+            f"{len(outside)} of the {len(found['icons'])} job icon(s) on {url} fall "
+            f"outside the {width}x{height} frame this script cuts: the lowest sits "
+            f"at y={lowest:.0f} and the frame ends at y={bottom:.0f}. The job list is "
+            f"what this picture is for, so raise CI_RUN_SIZE until all of it is "
+            f"inside — and re-pin the new size where the image is checked."
+        )
+
+
+def _photograph_the_pipeline(browser, probe: Page, base_url: str, url: str) -> None:
+    """One public run page, checked for what it claims and then cut to it."""
+    width, height = CI_RUN_VIEWPORT
+    page = browser.new_page(viewport={"width": width, "height": height})
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=CI_RUN_TIMEOUT_SECONDS * 1000)
+        _wait_for_the_run_to_be_drawn(page, url)
+        # The graph draws its nodes and then lays them out. The rectangles the
+        # frame is checked against are the ones the screenshot will hold only
+        # once that has settled, so the reading that matters is taken after.
+        page.wait_for_timeout(2000)
+        found = _run_page(page)
+        _require_the_run_is_green(found, url)
+        frame = _frame(found, url)
+        _require_every_job_is_in_frame(found, frame, url)
+        (ROOT / CI_RUN_IMAGE).parent.mkdir(parents=True, exist_ok=True)
+        page.screenshot(path=ROOT / CI_RUN_IMAGE, clip=frame, animations="disabled")
+    finally:
+        page.close()
+    _require_a_picture(probe, base_url, CI_RUN_IMAGE, *CI_RUN_SIZE)
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -396,16 +607,56 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "pytest collects for it."
         ),
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--ci-run",
+        metavar="URL",
+        default="",
+        help=(
+            f"the public GitHub Actions run page to photograph into {CI_RUN_IMAGE}, "
+            "e.g. https://github.com/<owner>/<repo>/actions/runs/<id>. It is opened "
+            "logged out, the way a visitor opens it, and a run that is not green is "
+            "refused."
+        ),
+    )
+    parser.add_argument(
+        "--only",
+        metavar="PICTURE",
+        action="append",
+        choices=EVERY_PICTURE,
+        help=(
+            "take one picture instead of every one this script knows how to take: "
+            + ", ".join(EVERY_PICTURE)
+            + ". Repeat the option for more than one. The cover and the report are "
+            "exported from what is on this machine and the pipeline from a page on "
+            "the network, so this is how either is refreshed without the other."
+        ),
+    )
+    args = parser.parse_args(argv)
+    if args.only:
+        args.asked = frozenset(args.only)
+    else:
+        args.asked = LOCAL_PICTURES | ({CI_RUN_SHOT} if args.ci_run else set())
+    if CI_RUN_SHOT in args.asked and not args.ci_run:
+        parser.error(
+            f"--only {CI_RUN_SHOT} needs the run to photograph: pass --ci-run URL."
+        )
+    # An option that describes a picture nobody asked for is a request that
+    # will not happen, and saying so beats exporting something else in silence.
+    if args.ci_run and CI_RUN_SHOT not in args.asked:
+        parser.error(f"--ci-run names a page that --only leaves untaken; add --only {CI_RUN_SHOT}.")
+    if args.ran and REPORT_SHOT not in args.asked:
+        parser.error("--ran describes the report screenshot, which --only leaves untaken.")
+    return args
 
 
 def main(argv: list[str] | None = None) -> None:
-    ran = _parse_args(argv).ran
-    if not (REPORT_DIR / "index.html").exists():
+    args = _parse_args(argv)
+    if REPORT_SHOT in args.asked and not (REPORT_DIR / "index.html").exists():
         raise RuntimeError(
             f"{REPORT_DIR.relative_to(ROOT)}/index.html does not exist, so there is no "
             f"report to photograph. Generate one first:\n"
-            f"  ~/.local/bin/allure generate allure-results --clean -o site/report"
+            f"  ~/.local/bin/allure generate allure-results --clean -o site/report\n"
+            f"Or take another picture instead: --only {CI_RUN_SHOT} needs nothing local."
         )
     with _serving() as base_url, sync_playwright() as p:
         browser = p.chromium.launch()
@@ -416,23 +667,28 @@ def main(argv: list[str] | None = None) -> None:
             probe = browser.new_page()
             probe.goto(f"{base_url}/probe", wait_until="load")
 
-            for source, name, width, height in SHOTS:
-                page = browser.new_page(viewport={"width": width, "height": height})
-                page.goto((ROOT / source).as_uri())
-                page.wait_for_timeout(300)
-                page.screenshot(path=ROOT / name)
-                page.close()
-                _require_a_picture(probe, base_url, name, width, height)
+            if COVER_SHOT in args.asked:
+                for source, name, width, height in SHOTS:
+                    page = browser.new_page(viewport={"width": width, "height": height})
+                    page.goto((ROOT / source).as_uri())
+                    page.wait_for_timeout(300)
+                    page.screenshot(path=ROOT / name)
+                    page.close()
+                    _require_a_picture(probe, base_url, name, width, height)
 
-            for path, name, ready, width, height in PAGES:
-                page = browser.new_page(viewport={"width": width, "height": height})
-                page.goto(f"{base_url}{path}", wait_until="load", timeout=60_000)
-                _require_report_is_complete_and_green(page, base_url, ran)
-                page.wait_for_selector(ready, timeout=60_000)
-                page.wait_for_timeout(3000)
-                page.screenshot(path=ROOT / name)
-                page.close()
-                _require_a_picture(probe, base_url, name, width, height)
+            if REPORT_SHOT in args.asked:
+                for path, name, ready, width, height in PAGES:
+                    page = browser.new_page(viewport={"width": width, "height": height})
+                    page.goto(f"{base_url}{path}", wait_until="load", timeout=60_000)
+                    _require_report_is_complete_and_green(page, base_url, args.ran)
+                    page.wait_for_selector(ready, timeout=60_000)
+                    page.wait_for_timeout(3000)
+                    page.screenshot(path=ROOT / name)
+                    page.close()
+                    _require_a_picture(probe, base_url, name, width, height)
+
+            if CI_RUN_SHOT in args.asked:
+                _photograph_the_pipeline(browser, probe, base_url, args.ci_run)
 
             probe.close()
         finally:
