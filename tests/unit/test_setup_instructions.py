@@ -1,4 +1,4 @@
-"""The install line a reader copies buys everything the suite needs to collect.
+"""Every dependency list this repository states twice states the same thing.
 
 The Setup block in the README is the first command anybody runs here, and it
 was installing `.[dev]` while the suite could not so much as collect without
@@ -18,6 +18,7 @@ the failure this pin exists for.
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -65,4 +66,53 @@ def test_the_readme_installs_at_least_what_make_install_does() -> None:
         f"  README:   {readme_line}\n"
         f"  Makefile: {make_line}\n"
         f"missing from the README: {sorted(make_extras - readme_extras)}"
+    )
+
+
+#: The one package in the `stand` extra that the stand itself does not need.
+#: It parses HTML, and the thing that parses HTML is `tests/stand`, which
+#: checks the shop's markup without a browser. The shop's own image has no
+#: tests in it.
+CONTRACT_ONLY = {"selectolax"}
+
+#: One requirement line, with the version specifier left on: pinning the names
+#: alone would let `uvicorn>=0.32` on one side and `uvicorn>=0.20` on the other
+#: pass for the same list.
+REQUIREMENT = re.compile(r"^\s*([^#\s].*?)\s*$")
+
+
+def _requirements(path: Path) -> set[str]:
+    """The requirement lines of a pip requirements file, comments and blanks out."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return {m.group(1) for m in map(REQUIREMENT.match, lines) if m}
+
+
+def _distribution(requirement: str) -> str:
+    """The package a requirement names, with the version specifier left off."""
+    return re.split(r"[<>=!~\[;\s]", requirement, maxsplit=1)[0].strip().lower()
+
+
+def test_the_stand_image_installs_the_stand_extra() -> None:
+    """The stand's dependencies are written down twice, and must not drift apart.
+
+    `pyproject.toml` has them because the suite starts the stand in its own
+    process, and `stand/requirements.txt` has them because the stand's image is
+    built without this project installed in it -- `stand/Dockerfile` copies the
+    file, installs it and copies `stand/`, so the image stays small and stops
+    depending on the framework it is under test for. Two lists mean two places
+    to add a package and one place to forget it, and forgetting this one fails
+    in a container at start-up rather than here.
+    """
+    extra = set(tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+                ["project"]["optional-dependencies"]["stand"])
+    stated = _requirements(ROOT / "stand" / "requirements.txt")
+
+    expected = {line for line in extra if _distribution(line) not in CONTRACT_ONLY}
+
+    assert stated == expected, (
+        "stand/requirements.txt and the `stand` extra in pyproject.toml disagree:\n"
+        f"  in the extra, not in the file: {sorted(expected - stated)}\n"
+        f"  in the file, not in the extra: {sorted(stated - extra)}\n"
+        f"({', '.join(sorted(CONTRACT_ONLY))} is deliberately not in the file: it "
+        "parses HTML for tests/stand, and the stand's image holds no tests.)"
     )
