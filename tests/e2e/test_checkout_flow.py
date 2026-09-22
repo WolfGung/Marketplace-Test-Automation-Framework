@@ -19,6 +19,7 @@ from ecom_taf.ui.pages import (
 @allure.link("https://www.automationexercise.com/checkout", name="Page under test: /checkout")
 @pytest.mark.e2e
 @pytest.mark.smoke
+@pytest.mark.destructive
 def test_logged_in_user_can_place_an_order(
     registered_user: UserAccount,
     auth_page: AuthPage,

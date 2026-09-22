@@ -1,10 +1,12 @@
-# Named environments for the same public demo application.
-# Override any value with environment variables / .env (see Settings).
+# Named targets. `local` is the stand in stand/ — the shop this repository
+# ships and the suite runs against by default; `prod` is the public demo site
+# the stand reproduces, used only for the drift check. Override any value with
+# environment variables / .env (see Settings).
+
+local:
+  base_url: http://127.0.0.1:8092
+  api_base_url: http://127.0.0.1:8092/api
 
 prod:
-  base_url: https://www.automationexercise.com
-  api_base_url: https://www.automationexercise.com/api
-
-stage:
   base_url: https://www.automationexercise.com
   api_base_url: https://www.automationexercise.com/api

@@ -11,6 +11,7 @@ from ecom_taf.ui.pages import AuthPage, HomePage
 @allure.link("https://www.automationexercise.com/login", name="Page under test: /login")
 @pytest.mark.ui
 @pytest.mark.smoke
+@pytest.mark.destructive
 def test_login_with_api_created_user(
     registered_user: UserAccount,
     auth_page: AuthPage,

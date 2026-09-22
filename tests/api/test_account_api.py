@@ -12,6 +12,7 @@ from ecom_taf.models.user import UserAccount
 @allure.link("https://www.automationexercise.com/api_list", name="API under test: /createAccount")
 @pytest.mark.api
 @pytest.mark.smoke
+@pytest.mark.destructive
 def test_create_get_and_delete_user_account(account_api: AccountApi) -> None:
     user = UserFactory.build()
     created = account_api.create_account(user)
@@ -31,6 +32,7 @@ def test_create_get_and_delete_user_account(account_api: AccountApi) -> None:
 @allure.severity(allure.severity_level.NORMAL)
 @allure.link("https://www.automationexercise.com/api_list", name="API under test: /updateAccount")
 @pytest.mark.api
+@pytest.mark.destructive
 def test_update_user_account(registered_user: UserAccount, account_api: AccountApi) -> None:
     registered_user.company = "Updated QA Company"
     updated = account_api.update_account(registered_user)
@@ -42,6 +44,7 @@ def test_update_user_account(registered_user: UserAccount, account_api: AccountA
 @allure.severity(allure.severity_level.NORMAL)
 @allure.link("https://www.automationexercise.com/api_list", name="API under test: /verifyLogin")
 @pytest.mark.api
+@pytest.mark.destructive
 def test_verify_login_with_valid_user(registered_user: UserAccount, account_api: AccountApi) -> None:
     result = account_api.verify_login(registered_user.email, registered_user.password)
     assert result.response_code == 200

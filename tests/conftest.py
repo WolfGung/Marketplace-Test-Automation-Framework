@@ -3,9 +3,13 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+import threading
+import time
 import warnings
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
+from urllib.request import urlopen
 
 import allure
 import pytest
@@ -184,8 +188,63 @@ def settings() -> Settings:
     return get_settings()
 
 
+def _stand_address(base_url: str) -> tuple[str, int] | None:
+    """Host and port when the target is this machine, else None.
+
+    Only a loopback target is something this suite would start itself: a
+    hostname like `stand` (the compose service) or the public site is
+    somebody else's process, answering or not.
+    """
+    parts = urlsplit(base_url)
+    if parts.hostname not in {"127.0.0.1", "localhost"} or parts.port is None:
+        return None
+    return parts.hostname, parts.port
+
+
+def _answers(url: str, timeout: float = 1.0) -> bool:
+    """Whether an HTTP server answers at `url` with any status at all."""
+    try:
+        with urlopen(url, timeout=timeout):
+            return True
+    except Exception:
+        return False
+
+
+@pytest.fixture(scope="session")
+def local_stand(settings: Settings):
+    """Start the stand in this process when the suite targets it and nothing answers.
+
+    A clean clone runs `make test` and expects green: the stand is part of the
+    repository, so the suite starts it rather than asking the reader to open
+    a second terminal. When something already listens on the port — the
+    compose service, a stand started by hand, the CI job — it is used as is,
+    exactly like the public site was. A target that is not loopback is never
+    started here.
+    """
+    address = _stand_address(settings.base_url)
+    if address is None or _answers(settings.base_url):
+        yield None
+        return
+    import uvicorn  # the stand's dependencies are an extra: only a local run needs them
+
+    from stand.app.main import create_app
+
+    host, port = address
+    server = uvicorn.Server(uvicorn.Config(create_app(), host=host, port=port, log_level="warning"))
+    thread = threading.Thread(target=server.run, daemon=True, name="local-stand")
+    thread.start()
+    deadline = time.monotonic() + 15
+    while not _answers(settings.base_url, timeout=0.5):
+        if time.monotonic() > deadline or not thread.is_alive():
+            raise RuntimeError(f"the stand did not start on {settings.base_url} within 15 s")
+        time.sleep(0.2)
+    yield server
+    server.should_exit = True
+    thread.join(timeout=5)
+
+
 @pytest.fixture
-def http_client() -> HttpClient:
+def http_client(local_stand) -> HttpClient:
     client = HttpClient()
     yield client
     client.close()
@@ -244,7 +303,7 @@ def _stop_tracing(context: BrowserContext, trace_dir: str, name: str) -> None:
 
 
 @pytest.fixture
-def context(browser: Browser, settings: Settings, request: pytest.FixtureRequest) -> BrowserContext:
+def context(browser: Browser, settings: Settings, request: pytest.FixtureRequest, local_stand) -> BrowserContext:
     kwargs = {
         "base_url": settings.base_url,
         "viewport": {"width": 1440, "height": 900},

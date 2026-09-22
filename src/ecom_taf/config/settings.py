@@ -23,9 +23,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    env: str = Field(default="prod", validation_alias="TEST_ENV")
-    base_url: str = "https://www.automationexercise.com"
-    api_base_url: str = "https://www.automationexercise.com/api"
+    env: str = Field(default="local", validation_alias="TEST_ENV")
+    base_url: str = "http://127.0.0.1:8092"
+    api_base_url: str = "http://127.0.0.1:8092/api"
     headless: bool = True
     browser: BrowserName = "chromium"
     slow_mo_ms: int = 0
