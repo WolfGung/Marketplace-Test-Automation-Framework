@@ -104,6 +104,12 @@ CLAIMS: dict[tuple[str, str], tuple[str, ...]] = {
     # about the tooling and not about the marketplace -- the same reason the
     # README's coverage table leaves it out.
     ("ci-pipeline.svg", "cross-browser suite"): ("-m", "ui or e2e"),
+    # The drift check is the one job that leaves this repository, and the count
+    # it states is the reason it is safe to let it: the smoke set minus the
+    # cases that create an account or place an order. If a case were added to
+    # the smoke set without `destructive`, this number would move here before
+    # anybody found out by reading somebody else's database.
+    ("ci-pipeline.svg", "drift check"): ("-m", "smoke and not destructive"),
     # The cover's three cards are the three test directories, one per card, and
     # they are counted the same way the architecture figure counts them.
     (COVER, "REST API"): ("-m", "", "tests/api"),
@@ -125,6 +131,12 @@ CLAIMS: dict[tuple[str, str], tuple[str, ...]] = {
     (README, "End to end, across both doors"): ("-m", "", "tests/e2e"),
     (README, "The application under test"): ("-m", "", "tests/api", "tests/ui", "tests/e2e"),
     (README, "Of those, the smoke set"): ("-m", "smoke"),
+    # The stand's own contract is the one row in that table that is not a check
+    # of the application: it is the shop the suite runs against, checked over
+    # HTTP so that a selector the page objects depend on fails in milliseconds
+    # rather than through a browser. It is counted here, and left out of the
+    # application's total, for that reason.
+    (README, "The stand's own contract, without a browser"): ("-m", "", "tests/stand"),
 }
 
 

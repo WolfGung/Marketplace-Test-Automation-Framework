@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 780" width="860" height="780"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 860" width="860" height="860"
      role="img" aria-labelledby="arch-title arch-desc"
      font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
   <title id="arch-title">How the marketplace suite is put together</title>
-  <desc id="arch-desc">Three bands and a shared column. Top: the markers smoke, negative and integration, which select across the layers rather than being layers, and under them the test modules — tests/api with 14 cases, tests/e2e with 2 and tests/ui with 8. The end-to-end module sits in the middle and a heavy path runs from it down the centre of the figure, forking into both the API client and the page objects and continuing into both doors of the application: it is the one route that crosses both. Middle band: the reusable layer — src/ecom_taf/api with HttpClient, ApiResult, ProductsApi and AccountApi, and src/ecom_taf/ui/pages with the eight page objects, reached through Playwright driving Chromium. Bottom band, drawn with a dashed edge because it is somebody else's system: the REST API at /api and the public storefront www.automationexercise.com, a live site with no local stand and no database under our control. The column on the right holds what every layer shares — tests/conftest.py, which registers a throwaway account through the API and deletes it afterwards and which writes the run's evidence, src/ecom_taf/data/user_factory.py, src/ecom_taf/models and src/ecom_taf/config/settings.py.</desc>
+  <desc id="arch-desc">Three bands and a shared column. Top: the markers smoke, negative and integration, which select across the layers rather than being layers, and under them the test modules — tests/api with 14 cases, tests/e2e with 2 and tests/ui with 8. The end-to-end module sits in the middle and a heavy path runs from it down the centre of the figure, forking into both the API client and the page objects and continuing into both doors of the shop: it is the one route that crosses both. Middle band: the reusable layer — src/ecom_taf/api with HttpClient, ApiResult, ProductsApi and AccountApi, and src/ecom_taf/ui/pages with the eight page objects, reached through Playwright driving Chromium. Bottom band: the shop under test, and it ships with this repository — the stand, a small FastAPI shop the suite starts on 127.0.0.1:8092, with its two doors under it, the REST API at /api and the pages a browser drives. Below them, drawn with a dashed edge because it is somebody else's system, the public demo site www.automationexercise.com: what the stand reproduces, read once a night by the read-only smoke set. The column on the right holds what every layer shares — tests/conftest.py, which starts the stand when nothing answers, registers a throwaway account through the API and deletes it afterwards, and which writes the run's evidence, src/ecom_taf/data/user_factory.py, src/ecom_taf/models and src/ecom_taf/config/settings.py.</desc>
 
   <!-- The figure is referenced through <img>, so it cannot inherit a colour
        from the host page: it carries its own light plate and dark ink, and
@@ -43,7 +43,7 @@
     </marker>
   </defs>
 
-  <rect class="plate" x="0" y="0" width="860" height="780"/>
+  <rect class="plate" x="0" y="0" width="860" height="860"/>
 
   <text class="h"   x="24" y="32">The suite, layer by layer</text>
   <text class="sub" x="24" y="54">Who asserts, what they reuse, and which door each one knocks on. The end-to-end path is the route that crosses both.</text>
@@ -109,60 +109,74 @@
   <rect class="box pill" x="360" y="532" width="240" height="34" rx="17"/>
   <text class="b" x="480" y="554" text-anchor="middle">Playwright → Chromium</text>
 
-  <!-- ================= band 3: the application under test ================= -->
-  <rect class="foreign" x="24" y="584" width="612" height="172" rx="10"/>
+  <!-- ================= band 3: the shop under test ================= -->
+  <rect class="zone" x="24" y="584" width="612" height="250" rx="10"/>
 
-  <rect class="box" x="40" y="618" width="272" height="104" rx="8"/>
-  <text class="t" x="176" y="646" text-anchor="middle">REST API</text>
-  <text class="b" x="176" y="668" text-anchor="middle">/api</text>
-  <text class="m" x="176" y="690" text-anchor="middle">products · brands · search</text>
-  <text class="m" x="176" y="708" text-anchor="middle">create and delete accounts</text>
+  <!-- The shop itself, and under it the two doors it answers on. Everything
+       above lands here: the arrows from the reusable layer stop at its top
+       edge, whichever door they were aimed at. -->
+  <rect class="box" x="40" y="618" width="576" height="34" rx="8"/>
+  <text class="t" x="328" y="641" text-anchor="middle">the stand — a small shop in this repository (FastAPI)</text>
 
-  <rect class="box" x="344" y="618" width="272" height="104" rx="8"/>
-  <text class="t" x="480" y="646" text-anchor="middle">the storefront</text>
-  <text class="b" x="480" y="668" text-anchor="middle">www.automationexercise.com</text>
-  <text class="m" x="480" y="690" text-anchor="middle">catalogue · search · cart</text>
-  <text class="m" x="480" y="708" text-anchor="middle">sign-in · checkout · payment</text>
+  <rect class="box" x="40" y="664" width="272" height="104" rx="8"/>
+  <text class="t" x="176" y="692" text-anchor="middle">REST API</text>
+  <text class="b" x="176" y="714" text-anchor="middle">/api</text>
+  <text class="m" x="176" y="736" text-anchor="middle">products · brands · search</text>
+  <text class="m" x="176" y="754" text-anchor="middle">create and delete accounts</text>
 
-  <text class="m" x="616" y="744" text-anchor="end">a live public site: no local stand, no database of ours, no seeding — ads and rate limits included</text>
+  <rect class="box" x="344" y="664" width="272" height="104" rx="8"/>
+  <text class="t" x="480" y="692" text-anchor="middle">the pages</text>
+  <text class="b" x="480" y="714" text-anchor="middle">127.0.0.1:8092</text>
+  <text class="m" x="480" y="736" text-anchor="middle">catalogue · search · cart</text>
+  <text class="m" x="480" y="754" text-anchor="middle">sign-in · checkout · payment</text>
+
+  <path class="link" d="M176,652 L176,664"/>
+  <path class="link" d="M480,652 L480,664"/>
+
+  <!-- One setting away, and one job a night: still somebody else's system,
+       so it keeps the dashed edge the whole band used to carry. -->
+  <rect class="foreign" x="40" y="780" width="576" height="44" rx="8"/>
+  <text class="t2" x="328" y="800" text-anchor="middle">the public demo site — nightly drift check</text>
+  <text class="m"  x="328" y="818" text-anchor="middle">www.automationexercise.com — what the stand reproduces · the read-only smoke set</text>
 
   <!-- ================= the shared column ================= -->
-  <rect class="zone" x="652" y="78" width="184" height="678" rx="10"/>
+  <rect class="zone" x="652" y="78" width="184" height="756" rx="10"/>
 
   <rect class="box" x="664" y="114" width="160" height="158" rx="8"/>
   <text class="t2" x="744" y="140" text-anchor="middle">tests/conftest.py</text>
-  <text class="m"  x="744" y="164" text-anchor="middle">the fixtures live here</text>
-  <text class="m"  x="744" y="188" text-anchor="middle">registers a throwaway</text>
-  <text class="m"  x="744" y="206" text-anchor="middle">account through the API</text>
-  <text class="m"  x="744" y="224" text-anchor="middle">and deletes it after</text>
+  <text class="m"  x="744" y="160" text-anchor="middle">the fixtures live here</text>
+  <text class="m"  x="744" y="178" text-anchor="middle">starts the stand when</text>
+  <text class="m"  x="744" y="196" text-anchor="middle">nothing answers on 8092</text>
+  <text class="m"  x="744" y="214" text-anchor="middle">registers a throwaway</text>
+  <text class="m"  x="744" y="232" text-anchor="middle">account and deletes it</text>
   <text class="m"  x="744" y="250" text-anchor="middle">failure shot · video</text>
 
-  <rect class="box" x="664" y="296" width="160" height="100" rx="8"/>
-  <text class="t2" x="744" y="322" text-anchor="middle">allure-results</text>
-  <text class="t2" x="744" y="340" text-anchor="middle">+ the video</text>
-  <text class="m"  x="744" y="364" text-anchor="middle">what the run leaves</text>
-  <text class="m"  x="744" y="382" text-anchor="middle">behind, for the report</text>
+  <rect class="box" x="664" y="316" width="160" height="100" rx="8"/>
+  <text class="t2" x="744" y="342" text-anchor="middle">allure-results</text>
+  <text class="t2" x="744" y="360" text-anchor="middle">+ the video</text>
+  <text class="m"  x="744" y="384" text-anchor="middle">what the run leaves</text>
+  <text class="m"  x="744" y="402" text-anchor="middle">behind, for the report</text>
 
-  <rect class="box" x="664" y="420" width="160" height="98" rx="8"/>
-  <text class="t2" x="744" y="446" text-anchor="middle">src/ecom_taf/data/</text>
-  <text class="t2" x="744" y="464" text-anchor="middle">user_factory.py</text>
-  <text class="m"  x="744" y="488" text-anchor="middle">a fresh person for</text>
-  <text class="m"  x="744" y="506" text-anchor="middle">every run</text>
+  <rect class="box" x="664" y="460" width="160" height="98" rx="8"/>
+  <text class="t2" x="744" y="486" text-anchor="middle">src/ecom_taf/data/</text>
+  <text class="t2" x="744" y="504" text-anchor="middle">user_factory.py</text>
+  <text class="m"  x="744" y="528" text-anchor="middle">a fresh person for</text>
+  <text class="m"  x="744" y="546" text-anchor="middle">every run</text>
 
-  <rect class="box" x="664" y="542" width="160" height="82" rx="8"/>
-  <text class="t2" x="744" y="568" text-anchor="middle">src/ecom_taf/models/</text>
-  <text class="m"  x="744" y="592" text-anchor="middle">typed payloads</text>
-  <text class="m"  x="744" y="612" text-anchor="middle">Product · UserAccount</text>
+  <rect class="box" x="664" y="601" width="160" height="82" rx="8"/>
+  <text class="t2" x="744" y="627" text-anchor="middle">src/ecom_taf/models/</text>
+  <text class="m"  x="744" y="651" text-anchor="middle">typed payloads</text>
+  <text class="m"  x="744" y="671" text-anchor="middle">Product · UserAccount</text>
 
-  <rect class="box" x="664" y="648" width="160" height="82" rx="8"/>
-  <text class="t2" x="744" y="674" text-anchor="middle">src/ecom_taf/config/</text>
-  <text class="t2" x="744" y="692" text-anchor="middle">settings.py</text>
-  <text class="m"  x="744" y="716" text-anchor="middle">environment-driven</text>
+  <rect class="box" x="664" y="726" width="160" height="82" rx="8"/>
+  <text class="t2" x="744" y="752" text-anchor="middle">src/ecom_taf/config/</text>
+  <text class="t2" x="744" y="770" text-anchor="middle">settings.py</text>
+  <text class="m"  x="744" y="794" text-anchor="middle">environment-driven</text>
 
-  <path class="arrow" d="M744,272 L744,292"/>
+  <path class="arrow" d="M744,272 L744,312"/>
   <path class="dash"  d="M652,193 L638,193"/>
   <path class="dash"  d="M652,469 L638,469"/>
-  <path class="dash"  d="M652,689 L638,689"/>
+  <path class="dash"  d="M652,660 L638,660"/>
 
   <!-- ================= what reaches what ================= -->
   <path class="arrow" d="M128,272 L128,374"/>
@@ -176,13 +190,13 @@
   <path class="trunk-end" d="M416,508 L416,528"/>
   <path class="trunk-end" d="M416,568 L416,614"/>
 
-  <path class="dash" d="M342,670 L316,670"/>
+  <path class="dash" d="M342,716 L316,716"/>
   <text class="spinelab" x="40" y="330">THE END-TO-END PATH</text>
   <!-- Painted last, over a knockout of the band's own fill: a connector that
        crosses a word passes behind it rather than through it. -->
   <text class="lab" x="40" y="100">MARKERS — THEY SELECT ACROSS THE LAYERS; THEY ARE NOT LAYERS</text>
   <text class="lab" x="40" y="170">TESTS — WHERE THE ASSERTIONS LIVE</text>
   <text class="lab" x="40" y="366">THE REUSABLE LAYER — A CHANGE LANDS HERE ONCE</text>
-  <text class="lab" x="40" y="606">THE APPLICATION UNDER TEST — NOT OUR SYSTEM</text>
+  <text class="lab" x="40" y="606">THE SHOP UNDER TEST — IT SHIPS WITH THIS REPOSITORY</text>
   <text class="lab" x="664" y="100">SHARED ACROSS LAYERS</text>
 </svg>

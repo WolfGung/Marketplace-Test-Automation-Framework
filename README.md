@@ -1,6 +1,6 @@
 # Marketplace Test Automation Framework
 
-A test automation framework built from scratch for an online shop: API and browser tests that run in CI on every push, against a live storefront rather than a mock.
+A test automation framework built from scratch for an online shop: API and browser tests that run in CI on every push, against a small shop shipped in this repository — the same pages and API as a public demo site — with a nightly drift check against that public site.
 
 [![CI](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml)
 [![live report](https://img.shields.io/badge/live%20report-Allure-brightgreen)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
@@ -18,10 +18,11 @@ The suite covers three layers of the same shop: an API test suite for the rules 
 | End to end, across both doors | 2 | `tests/e2e` |
 | The application under test | 24 | the three rows above |
 | Of those, the smoke set | 5 | `-m smoke` |
+| The stand's own contract, without a browser | 27 | `tests/stand` |
 
-Counted by `pytest --collect-only`, and pinned by `tests/unit/test_showcase_figures.py` so a number here cannot drift away from the suite it describes.
+Counted by `pytest --collect-only`, and pinned by `tests/unit/test_showcase_figures.py` so a number here cannot drift away from the suite it describes. The stand's row is the contract of the shop the suite runs against — the selectors and the messages the page objects and the API client depend on — checked with an HTTP client and a parser, in milliseconds, before any browser test could fail on them.
 
-Those are the checks of the marketplace, and they are the only ones counted — here, on the published page, and in the figures. The project also carries checks over its own tooling in [`tests/unit/`](tests/unit): its settings, the diagnostics captured when a browser test fails, the report's failure grouping, the build of the published page, and the pins that keep every number above honest. They are deliberately left out of the arithmetic, because they prove nothing about the application under test.
+The rows above the stand's are the checks of the marketplace, and they are the only ones counted — here, on the published page, and in the figures. The stand's contract is not one of them, and neither are the checks this project carries over its own tooling in [`tests/unit/`](tests/unit): its settings, the diagnostics captured when a browser test fails, the report's failure grouping, the build of the published page, and the pins that keep every number above honest. Both are deliberately left out of the arithmetic, because neither proves anything about the application under test.
 
 A check sits at the lowest layer that can still prove the thing that matters. Product listings, search results, account creation and deletion and the answers each gives to input it should reject are data rules, so they are asserted against the REST API, where a failure names its own cause. Only behaviour a person can see is driven through a browser. The end-to-end pair exists because the purchase is the one flow whose whole value is that the separate parts hold together.
 
@@ -35,21 +36,15 @@ That is the published report, photographed from what is actually on `gh-pages`, 
 
 That is the run the CI badge at the top of this page points at, photographed from the public run page by `PYTHONPATH=. python scripts/make-assets.py --only ci-run --ci-run <run url>`, which reads the status off the page and refuses to photograph a run that is not green.
 
-[![Three bands. At the top the three test directories. Below them the code every test reuses: the HTTP client and the API resources, the page objects, the typed models, the per-run data factory and the settings. At the bottom the application under test, drawn as somebody else's system: the marketplace and its REST API. The API tests reach the API through the client, the browser tests reach the site through Playwright driving Chromium, and the end-to-end path runs down the middle through both doors at once. The figure states a case count for each directory; open it to read them.](showcase/assets/architecture.svg)](showcase/assets/architecture.svg)
+[![Three bands. At the top the three test directories. Below them the code every test reuses: the HTTP client and the API resources, the page objects, the typed models, the per-run data factory and the settings. At the bottom the shop under test, which ships with this repository: the stand, a small FastAPI shop, and under it the two doors it answers on — the REST API at /api and the pages a browser drives. Below those, drawn with a dashed edge because it is somebody else's system, the public demo site the stand reproduces and one nightly job reads. The API tests reach the API through the client, the browser tests reach the pages through Playwright driving Chromium, and the end-to-end path runs down the middle through both doors at once. The figure states a case count for each directory; open it to read them.](showcase/assets/architecture.svg)](showcase/assets/architecture.svg)
 
 Tests hold the assertions; everything reusable sits below them, so a change in the application lands in one file. The end-to-end path is the one route that crosses both doors. [Open the diagram at full size.](showcase/assets/architecture.svg)
 
-## Application Under Test
+## Two targets
 
-Tests run against the public demo marketplace **[Automation Exercise](https://www.automationexercise.com/)**.
+The suite runs, by default, against **the stand**: a small shop in [`stand/`](stand) with the same pages and the same REST API as the public demo site [Automation Exercise](https://www.automationexercise.com/) — registration and login, a catalogue with search, a cart, checkout and payment, and the API's `responseCode`-inside-HTTP-200 convention, form-encoded bodies and messages. It is a FastAPI application with one in-memory account store shared by the API and the browser session, and it is started by the suite itself when nothing answers on its port, so a clean clone runs green with no second terminal and no network.
 
-It is a good fit for this portfolio project because it exposes:
-
-- a full storefront (auth, catalog, search, cart, checkout)
-- a documented [REST API](https://www.automationexercise.com/api_list) for products, brands, search and accounts
-- realistic API/UI cross-validation scenarios
-
-This is a third-party public site. Tests create disposable accounts and delete them after use. Occasional flakiness from ads, rate limits or downtime is expected. The pipeline acts on that: every run first probes the storefront, and the browser suite runs only when the probe answers HTTP 200 — otherwise the run states which status it got and that the browser layer was skipped for it, rather than reporting a red suite the application did not cause. The API suite is never gated, because there a failure is the result and not an excuse.
+The public site is still there, one setting away (`TEST_ENV=prod`), and one CI job uses it: the nightly **drift check** runs the read-only smoke set — `-m "smoke and not destructive"`, which creates no account and places no order on somebody else's site — and never blocks the pipeline. That job keeps the page objects honest against the real markup; the stand keeps the pipeline honest against the code.
 
 ## Tech Stack
 
@@ -57,6 +52,7 @@ This is a third-party public site. Tests create disposable accounts and delete t
 - **Pytest**
 - **Playwright**
 - **REST API** (`httpx`)
+- **FastAPI** (the stand in `stand/`)
 - **Allure Report**
 - **Docker**
 - **CI/CD** (GitHub Actions)
@@ -67,7 +63,7 @@ This is a third-party public site. Tests create disposable accounts and delete t
 
 **One fact is checked through two doors.** [`tests/e2e/test_api_ui_product_consistency.py`](tests/e2e/test_api_ui_product_consistency.py) reads a product from the REST API, opens the same product in the browser and compares the name and the price. Both layers can be green while the two disagree; that disagreement is what a customer sees, and neither suite on its own can catch it.
 
-**The suite is a polite guest on a site it does not own.** The `registered_user` fixture in [`tests/conftest.py`](tests/conftest.py) creates a disposable account through the API, hands it to the test and deletes it afterwards, so a run leaves the application as it found it. That is also why the hook that captures a failure screenshot is written never to raise: a crashed session skips teardown, and skipped teardown means an account left behind on somebody else's site.
+**The suite is a polite guest on a site it does not own.** The `registered_user` fixture in [`tests/conftest.py`](tests/conftest.py) creates a disposable account through the API, hands it to the test and deletes it afterwards, so a run leaves the application as it found it. That is also why the hook that captures a failure screenshot is written never to raise: a crashed session skips teardown, and skipped teardown means an account left behind on somebody else's site. Against the stand the same fixture runs unchanged, and the account it creates lives in the stand's memory for exactly one test.
 
 **Per-run data comes from a factory, not from constants.** [`src/ecom_taf/data/user_factory.py`](src/ecom_taf/data/user_factory.py) builds a fresh account for every test that needs one, address and all. A suite pinned to a constant email passes once and then fails on "already registered", and the usual repair — deleting the record by hand between runs — is a step that cannot exist inside a pipeline.
 
@@ -84,7 +80,9 @@ tests/
   api/                 # contract / resource tests
   ui/                  # browser tests
   e2e/                 # business flows + API/UI checks
+  stand/               # the contract of the shop below, over HTTP, no browser
   unit/                # checks of this framework, not of the marketplace
+stand/                 # the shop the suite runs against (FastAPI)
 ```
 
 That split is the four decisions above in directory form: a test module holds assertions and nothing else, everything a test reuses sits under `src/ecom_taf/` where a change in the application lands once, and `tests/unit/` checks that framework rather than the marketplace.
@@ -113,6 +111,12 @@ pytest -m ui
 pytest -m e2e
 pytest -m smoke
 
+# the drift check against the public site
+TEST_ENV=prod pytest -m "smoke and not destructive"
+
+# the shop on its own, http://127.0.0.1:8092
+make stand
+
 # Allure results
 pytest --alluredir=allure-results
 
@@ -125,7 +129,7 @@ playwright show-trace traces/checkout-test_logged_in_user_can_place_an_order.zip
 allure serve allure-results
 ```
 
-Useful Make targets: `make install`, `make test`, `make test-api`, `make test-ui`, `make test-e2e`, `make test-smoke`, `make report`, `make lint`.
+Useful Make targets: `make install`, `make test`, `make test-api`, `make test-ui`, `make test-e2e`, `make test-smoke`, `make test-stand`, `make test-public`, `make stand`, `make report`, `make lint`.
 
 ## Docker
 
@@ -135,13 +139,23 @@ One command, and it needs nothing on the machine but Docker — no Python, no Pl
 docker compose run --rm tests
 ```
 
-The first run builds the image (Python 3.12, this framework, Chromium and the system libraries it needs: a few minutes, roughly 3 GB on disk) and then runs the API layer, writing Allure results to `./allure-results` through the bind mount declared in `docker-compose.yml`. The API layer is the default because it is the one layer that needs no browser, no display and no reachable storefront to be worth running. Pass `--build` to rebuild the image after changing the code.
+The first run builds the images (Python 3.12, this framework, Chromium and the system libraries it needs: a few minutes, roughly 3 GB on disk). The command then starts the stand as a service, waits for its healthcheck, and runs the API layer against it, writing Allure results to `./allure-results` through the bind mount declared in `docker-compose.yml`. The API layer is the default because it is the one layer that needs no browser and no display to be worth running. Pass `--build` to rebuild after changing the code, and `docker compose down` when you are finished: the stand keeps running between `run` commands, and that is what stops it.
 
 Any other selection is one argument away, and the browser layers run in the same container because Chromium is already in the image:
 
 ```bash
 docker compose run --rm tests pytest -m ui --alluredir=allure-results
 docker compose run --rm tests pytest tests/unit          # the framework's own checks
+```
+
+The drift check runs from the same container, but the compose file pins the stand's addresses for the `tests` service, so the target is moved on the command line rather than by `TEST_ENV` alone:
+
+```bash
+docker compose run --rm \
+  -e TEST_ENV=prod \
+  -e BASE_URL=https://www.automationexercise.com \
+  -e API_BASE_URL=https://www.automationexercise.com/api \
+  tests pytest -m "smoke and not destructive"
 ```
 
 Two things worth knowing, both found by running it rather than by reading it. The container runs as root, so `allure-results/` and everything in it belongs to root on the host — `sudo chown -R "$USER" allure-results` if a local run has to write into the same directory afterwards. And the image copies `allure/`, `showcase/` and `scripts/` in as well as `tests/`: pytest imports the whole `tests/` tree before `-m` selects anything from it, so while those were missing, even `-m api` stopped at collection on an import that has nothing to do with the API.
@@ -154,9 +168,9 @@ read from the environment or from a `.env` beside it.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `TEST_ENV` | `prod` | Named environment from `environments.yaml` |
-| `BASE_URL` | `https://www.automationexercise.com` | Storefront |
-| `API_BASE_URL` | `https://www.automationexercise.com/api` | REST API |
+| `TEST_ENV` | `local` | `local` (the stand) or `prod` (the public site) |
+| `BASE_URL` | `http://127.0.0.1:8092` | The shop's pages |
+| `API_BASE_URL` | `http://127.0.0.1:8092/api` | REST API |
 | `HEADLESS` | `true` | Playwright headless mode |
 | `BROWSER` | `chromium` | `chromium`, `firefox` or `webkit` |
 | `SLOW_MO_MS` | `0` | Pause between Playwright actions, for watching a run |
@@ -168,7 +182,9 @@ read from the environment or from a `.env` beside it.
 
 ## Markers
 
-`api`, `ui`, `e2e`, `smoke`, `negative`, `integration`
+`api`, `ui`, `e2e`, `smoke`, `negative`, `integration`, `destructive`, `stand`
+
+`destructive` marks the cases that create accounts or place orders — they never run against the public site; `stand` marks the contract of the shop in `stand/`.
 
 ## What the report shows
 
@@ -186,7 +202,7 @@ The engine is a setting (`BROWSER`, read into `Settings.browser`), so the whole 
 BROWSER=firefox pytest -m "ui or e2e"
 ```
 
-CI has a `browsers` job that does exactly that on all three engines, and it runs **only on manual dispatch** — not on a push, not on the schedule. The application under test belongs to somebody else and the suite creates real accounts on it; no assertion here is about how a page renders in one engine versus another, so running every push three times over would triple that traffic to learn nothing. It is a question worth asking deliberately — after a Playwright upgrade, when a locator changes — which is when the button gets pressed.
+CI has a `browsers` job that does exactly that on all three engines, and it runs **only on manual dispatch** — not on a push, not on the schedule. No assertion here is about how a page renders in one engine versus another, so the second and third leg answer the question the first already answered, at three times the runner minutes. Whether the suite still runs on Firefox and WebKit is a question worth asking deliberately — after a Playwright upgrade, when a locator changes — which is when the button gets pressed.
 
 ## Related work
 
