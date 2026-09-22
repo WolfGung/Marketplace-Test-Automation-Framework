@@ -189,7 +189,6 @@ cython_debug/
 # .idea/
 
 # Abstra
-#   Local state of a third-party tool.
 #   Ignore directories containing user credentials, local state, and settings.
 #   Learn more at https://abstra.io/docs
 .abstra/
