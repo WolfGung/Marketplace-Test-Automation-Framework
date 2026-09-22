@@ -9,6 +9,7 @@ import warnings
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import urlopen
 
@@ -260,10 +261,26 @@ def _stand_address(base_url: str) -> tuple[str, int] | None:
 
 
 def _answers(url: str, timeout: float = 1.0) -> bool:
-    """Whether an HTTP server answers at `url` with any status at all."""
+    """Whether something answers at `url` over HTTP, whatever it answers.
+
+    The question is who is on the port, not whether they are happy: a 404 or a
+    500 is a server: it received the request, parsed it and replied. The
+    fixture below uses this to decide whether to start the stand, and starting
+    a second one on a port something else is already holding fails with
+    "address already in use" -- so an error status has to count as an answer,
+    or a stand serving 404 on `/` (an older build, a different app, a proxy)
+    would be treated as an empty port.
+
+    `urlopen` raises `HTTPError` for those statuses rather than returning them,
+    which is why the error is caught and read as the answer it is. Everything
+    else -- a refused connection, a timeout, a socket that listens without
+    speaking HTTP -- is not an answer and is not treated as one.
+    """
     try:
         with urlopen(url, timeout=timeout):
             return True
+    except HTTPError:
+        return True
     except Exception:
         return False
 

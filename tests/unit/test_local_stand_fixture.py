@@ -1,7 +1,11 @@
 """The suite starts the stand only when it is the target, and never registers an account unannounced."""
 from __future__ import annotations
 
+import contextlib
 import socket
+import threading
+from collections.abc import Iterator
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from types import SimpleNamespace
 
 import pytest
@@ -26,6 +30,41 @@ def _free_port() -> int:
 )
 def test_only_a_loopback_target_is_something_the_suite_would_start(base_url, expected) -> None:
     assert _stand_address(base_url) == expected
+
+
+class _Answers404(BaseHTTPRequestHandler):
+    """A server with nothing at `/` -- which is still a server."""
+
+    def do_GET(self) -> None:  # noqa: N802 - the name is http.server's
+        self.send_error(404)
+
+    def log_message(self, fmt: str, *args: object) -> None:
+        """Silence the per-request log: a passing test should say nothing."""
+
+
+@contextlib.contextmanager
+def _serving_404() -> Iterator[str]:
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _Answers404)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_a_server_answering_404_counts_as_an_answer() -> None:
+    """An error status is a server; the fixture must not start a second one on it.
+
+    `urlopen` raises on 4xx and 5xx instead of returning them, so a blanket
+    `except Exception` read "this port is free" off a port that is anything
+    but -- and the stand started there would have failed on "address already
+    in use", pointing at the port rather than at the reason.
+    """
+    with _serving_404() as url:
+        assert _answers(url, timeout=2) is True
 
 
 def test_a_closed_port_does_not_answer_and_an_open_one_does() -> None:
