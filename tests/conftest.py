@@ -138,9 +138,7 @@ def _prepare_reporting(results_dir: Path, *, browser_used: bool) -> None:
         warnings.warn(f"could not write environment.properties into {results_dir}: {exc!r}", stacklevel=2)
 
 
-def pytest_collection_modifyitems(
-    session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
-) -> None:
+def pytest_collection_finish(session: pytest.Session) -> None:
     """Write the results directory's two companion files, once collection is in.
 
     Later than session start, and deliberately: the Environment panel is meant
@@ -149,12 +147,22 @@ def pytest_collection_modifyitems(
     still leaves the other -- which is what `_prepare_reporting` guards -- and
     both land long before the first test, which is all Allure needs: it reads
     them out of the results directory when the report is generated.
+
+    `pytest_collection_finish` and not `pytest_collection_modifyitems`, which
+    is the hook this obviously wants to be. A conftest's implementation of
+    that one is called *before* pytest deselects by `-m`, so under the CI
+    command `pytest -m api` it is handed the browser cases as well and would
+    answer "yes, a browser" for the one job that opens none -- the exact claim
+    this is here to stop. `session.items` at this point is what will actually
+    run.
     """
-    if config.option.collectonly:
+    if session.config.option.collectonly:
         return
-    configured = config.getoption("--alluredir", default=None)
+    configured = session.config.getoption("--alluredir", default=None)
     if configured:
-        _prepare_reporting(Path(configured), browser_used=_will_drive_a_browser(items))
+        _prepare_reporting(
+            Path(configured), browser_used=_will_drive_a_browser(session.items)
+        )
 
 
 def _attach_diagnostic(body: Any, *, name: str, attachment_type: Any) -> None:

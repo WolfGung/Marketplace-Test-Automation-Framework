@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -172,8 +173,9 @@ class _FakeConfig:
 
 
 class _FakeSession:
-    def __init__(self, config: _FakeConfig) -> None:
+    def __init__(self, config: _FakeConfig, items: list | None = None) -> None:
         self.config = config
+        self.items = items if items is not None else []
 
 
 class _BrowserItem:
@@ -195,7 +197,7 @@ def test_collection_skips_reporting_on_collect_only(monkeypatch, tmp_path) -> No
 
     calls = _record(monkeypatch, conftest)
     config = _FakeConfig(collectonly=True, alluredir=str(tmp_path))
-    conftest.pytest_collection_modifyitems(_FakeSession(config), config, [])  # type: ignore[arg-type]
+    conftest.pytest_collection_finish(_FakeSession(config))  # type: ignore[arg-type]
 
     assert calls == []
 
@@ -205,7 +207,7 @@ def test_collection_skips_reporting_without_alluredir(monkeypatch) -> None:
 
     calls = _record(monkeypatch, conftest)
     config = _FakeConfig(collectonly=False, alluredir=None)
-    conftest.pytest_collection_modifyitems(_FakeSession(config), config, [])  # type: ignore[arg-type]
+    conftest.pytest_collection_finish(_FakeSession(config))  # type: ignore[arg-type]
 
     assert calls == []
 
@@ -218,8 +220,60 @@ def test_collection_prepares_reporting_when_alluredir_is_set(monkeypatch, tmp_pa
     calls = _record(monkeypatch, conftest)
     target = tmp_path / "results"
     config = _FakeConfig(collectonly=False, alluredir=str(target))
-    conftest.pytest_collection_modifyitems(  # type: ignore[arg-type]
-        _FakeSession(config), config, [_BrowserItem()],
+    conftest.pytest_collection_finish(  # type: ignore[arg-type]
+        _FakeSession(config, [_BrowserItem()]),
     )
 
     assert calls == [(target, True)]
+
+
+#: The mini-suite below is the CI command's shape in miniature: a marked case
+#: that needs no browser, a marked case that needs one, and this project's own
+#: conftest supplying both the hook under test and the fixtures.
+_MINI_CONFTEST = "from tests.conftest import *  # noqa: F401,F403\n"
+_MINI_API = "import pytest\n\n\n@pytest.mark.api\ndef test_asks_no_browser():\n    assert True\n"
+_MINI_UI = "import pytest\n\n\n@pytest.mark.ui\ndef test_needs_a_browser(page):\n    assert page\n"
+
+
+def test_a_marker_selection_decides_the_panel_not_the_whole_collection(tmp_path) -> None:
+    """`pytest -m api` collects the browser cases and then deselects them.
+
+    This is the failure that shipped: read from `pytest_collection_modifyitems`
+    in a conftest, `items` still holds every case pytest collected, because
+    that hook is called before the deselection. The CI job would then write
+    `api.Browser=chromium` again, from a session that opens nothing -- and
+    with only the unit-level tests above, all of which hand the hook a list
+    directly, nothing would have noticed. So this one runs pytest.
+    """
+    import subprocess
+    import sys
+
+    (tmp_path / "conftest.py").write_text(_MINI_CONFTEST, encoding="utf-8")
+    (tmp_path / "test_api_like.py").write_text(_MINI_API, encoding="utf-8")
+    (tmp_path / "test_ui_like.py").write_text(_MINI_UI, encoding="utf-8")
+    results = tmp_path / "results"
+
+    proc = subprocess.run(
+        [
+            sys.executable, "-m", "pytest", "-m", "api", "-q",
+            "-p", "no:cacheprovider", f"--alluredir={results}", str(tmp_path),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PYTHONPATH": f"{ROOT}{os.pathsep}{ROOT / 'src'}",
+            "GITHUB_JOB": "api",
+        },
+        timeout=120,
+    )
+    assert proc.returncode == 0, f"{proc.stdout}\n{proc.stderr}"
+    assert "1 deselected" in proc.stdout, (
+        f"precondition: the browser case has to be collected and then deselected, "
+        f"which is the whole shape being tested.\n{proc.stdout}"
+    )
+
+    assert _keys(results) == {
+        "api.BASE_URL", "api.API_BASE_URL", "api.Python", "api.CI",
+    }
