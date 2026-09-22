@@ -7,6 +7,8 @@ from ecom_taf.ui.pages import ProductDetailsPage
 
 @allure.epic("E2E")
 @allure.feature("API/UI cross-validation")
+@allure.severity(allure.severity_level.CRITICAL)
+@allure.link("https://www.automationexercise.com/product_details/1", name="Page under test: /product_details/1")
 @pytest.mark.e2e
 @pytest.mark.integration
 def test_product_details_match_api_catalog(

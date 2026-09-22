@@ -6,6 +6,8 @@ from ecom_taf.ui.pages import CartPage, ProductDetailsPage, ProductsPage
 
 @allure.epic("UI")
 @allure.feature("Cart")
+@allure.severity(allure.severity_level.NORMAL)
+@allure.link("https://www.automationexercise.com/products", name="Page under test: /products")
 @pytest.mark.ui
 def test_add_product_from_catalog_to_cart(
     products_page: ProductsPage,
@@ -22,6 +24,8 @@ def test_add_product_from_catalog_to_cart(
 
 @allure.epic("UI")
 @allure.feature("Cart")
+@allure.severity(allure.severity_level.NORMAL)
+@allure.link("https://www.automationexercise.com/product_details/2", name="Page under test: /product_details/2")
 @pytest.mark.ui
 def test_add_product_with_quantity_from_details(
     product_details_page: ProductDetailsPage,

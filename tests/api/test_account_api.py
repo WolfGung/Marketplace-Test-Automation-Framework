@@ -8,6 +8,8 @@ from ecom_taf.models.user import UserAccount
 
 @allure.epic("API")
 @allure.feature("Account")
+@allure.severity(allure.severity_level.CRITICAL)
+@allure.link("https://www.automationexercise.com/api_list", name="API under test: /createAccount")
 @pytest.mark.api
 @pytest.mark.smoke
 def test_create_get_and_delete_user_account(account_api: AccountApi) -> None:
@@ -26,6 +28,8 @@ def test_create_get_and_delete_user_account(account_api: AccountApi) -> None:
 
 @allure.epic("API")
 @allure.feature("Account")
+@allure.severity(allure.severity_level.NORMAL)
+@allure.link("https://www.automationexercise.com/api_list", name="API under test: /updateAccount")
 @pytest.mark.api
 def test_update_user_account(registered_user: UserAccount, account_api: AccountApi) -> None:
     registered_user.company = "Updated QA Company"
@@ -35,6 +39,8 @@ def test_update_user_account(registered_user: UserAccount, account_api: AccountA
 
 @allure.epic("API")
 @allure.feature("Login")
+@allure.severity(allure.severity_level.NORMAL)
+@allure.link("https://www.automationexercise.com/api_list", name="API under test: /verifyLogin")
 @pytest.mark.api
 def test_verify_login_with_valid_user(registered_user: UserAccount, account_api: AccountApi) -> None:
     result = account_api.verify_login(registered_user.email, registered_user.password)
@@ -44,6 +50,8 @@ def test_verify_login_with_valid_user(registered_user: UserAccount, account_api:
 
 @allure.epic("API")
 @allure.feature("Login")
+@allure.severity(allure.severity_level.MINOR)
+@allure.link("https://www.automationexercise.com/api_list", name="API under test: /verifyLogin")
 @pytest.mark.api
 @pytest.mark.negative
 def test_verify_login_without_email(account_api: AccountApi) -> None:
@@ -53,6 +61,8 @@ def test_verify_login_without_email(account_api: AccountApi) -> None:
 
 @allure.epic("API")
 @allure.feature("Login")
+@allure.severity(allure.severity_level.CRITICAL)
+@allure.link("https://www.automationexercise.com/api_list", name="API under test: /verifyLogin")
 @pytest.mark.api
 @pytest.mark.negative
 def test_verify_login_with_invalid_credentials(account_api: AccountApi) -> None:
@@ -62,6 +72,8 @@ def test_verify_login_with_invalid_credentials(account_api: AccountApi) -> None:
 
 @allure.epic("API")
 @allure.feature("Login")
+@allure.severity(allure.severity_level.MINOR)
+@allure.link("https://www.automationexercise.com/api_list", name="API under test: /verifyLogin")
 @pytest.mark.api
 @pytest.mark.negative
 def test_delete_verify_login_not_supported(account_api: AccountApi) -> None:

@@ -6,6 +6,8 @@ from ecom_taf.api import ProductsApi
 
 @allure.epic("API")
 @allure.feature("Search")
+@allure.severity(allure.severity_level.NORMAL)
+@allure.link("https://www.automationexercise.com/api_list", name="API under test: /searchProduct")
 @pytest.mark.api
 @pytest.mark.parametrize("query", ["top", "tshirt", "jean"])
 def test_search_product_returns_matches(products_api: ProductsApi, query: str) -> None:
@@ -19,6 +21,8 @@ def test_search_product_returns_matches(products_api: ProductsApi, query: str) -
 
 @allure.epic("API")
 @allure.feature("Search")
+@allure.severity(allure.severity_level.MINOR)
+@allure.link("https://www.automationexercise.com/api_list", name="API under test: /searchProduct")
 @pytest.mark.api
 @pytest.mark.negative
 def test_search_product_without_parameter(products_api: ProductsApi) -> None:

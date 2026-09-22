@@ -166,6 +166,14 @@ Two things worth knowing, both found by running it rather than by reading it. Th
 
 `api`, `ui`, `e2e`, `smoke`, `negative`, `integration`
 
+## What the report shows
+
+Every case carries an `epic` and a `feature`, so the report's **Behaviors** view is the suite read by what it covers — API, UI and E2E, and under each of them Account, Login, Products, Brands, Search, Cart, Checkout — rather than by the directory the file happens to live in.
+
+Every case also carries a **severity**, and it means one thing: how much the defect that case would catch costs. The purchase is `blocker`. An account that cannot be created, a catalogue that does not answer, a sign-in that does not work and a wrong password that is accepted are `critical`. Input validation and unsupported methods are `minor`. A case does not get a high severity for having been difficult to write.
+
+And every case links the page or the documented endpoint it drives, so a failure in the report is one click from the thing that failed.
+
 ## Cross-browser
 
 The engine is a setting (`BROWSER`, read into `Settings.browser`), so the whole browser suite runs on Firefox or WebKit without a code change:

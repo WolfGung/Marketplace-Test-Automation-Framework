@@ -6,6 +6,8 @@ from ecom_taf.ui.pages import ProductsPage
 
 @allure.epic("UI")
 @allure.feature("Search")
+@allure.severity(allure.severity_level.NORMAL)
+@allure.link("https://www.automationexercise.com/products", name="Page under test: /products")
 @pytest.mark.ui
 @pytest.mark.parametrize("query", ["Dress", "Tshirt"])
 def test_product_search_returns_results(products_page: ProductsPage, query: str) -> None:

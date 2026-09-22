@@ -15,6 +15,8 @@ from ecom_taf.ui.pages import (
 
 @allure.epic("E2E")
 @allure.feature("Checkout")
+@allure.severity(allure.severity_level.BLOCKER)
+@allure.link("https://www.automationexercise.com/checkout", name="Page under test: /checkout")
 @pytest.mark.e2e
 @pytest.mark.smoke
 def test_logged_in_user_can_place_an_order(

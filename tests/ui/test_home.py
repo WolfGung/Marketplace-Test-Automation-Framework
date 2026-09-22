@@ -6,6 +6,8 @@ from ecom_taf.ui.pages import HomePage
 
 @allure.epic("UI")
 @allure.feature("Home")
+@allure.severity(allure.severity_level.CRITICAL)
+@allure.link("https://www.automationexercise.com/", name="Page under test: the storefront home page")
 @pytest.mark.ui
 @pytest.mark.smoke
 def test_home_page_loads(home_page: HomePage) -> None:

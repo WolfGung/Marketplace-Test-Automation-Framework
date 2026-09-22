@@ -7,6 +7,8 @@ from ecom_taf.ui.pages import AuthPage, HomePage
 
 @allure.epic("UI")
 @allure.feature("Authentication")
+@allure.severity(allure.severity_level.CRITICAL)
+@allure.link("https://www.automationexercise.com/login", name="Page under test: /login")
 @pytest.mark.ui
 @pytest.mark.smoke
 def test_login_with_api_created_user(
@@ -22,6 +24,8 @@ def test_login_with_api_created_user(
 
 @allure.epic("UI")
 @allure.feature("Authentication")
+@allure.severity(allure.severity_level.CRITICAL)
+@allure.link("https://www.automationexercise.com/login", name="Page under test: /login")
 @pytest.mark.ui
 @pytest.mark.negative
 def test_login_with_invalid_password(auth_page: AuthPage) -> None:
