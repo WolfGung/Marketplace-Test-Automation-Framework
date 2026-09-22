@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -65,6 +66,45 @@ def _will_drive_a_browser(items: list[pytest.Item]) -> bool:
     update a list of markers.
     """
     return any("browser" in item.fixturenames for item in items)
+
+
+#: The fixture that registers an account on whatever the suite is pointed at.
+#: A test that reaches it writes a record into somebody's database -- the
+#: stand's memory locally, a real account on the public site under
+#: `TEST_ENV=prod` -- so it has to carry `destructive`, which is what the drift
+#: check deselects with `-m "smoke and not destructive"`.
+ACCOUNT_FIXTURE = "registered_user"
+DESTRUCTIVE_MARKER = "destructive"
+
+
+def _unmarked_account_creators(items: Iterable[pytest.Item]) -> list[str]:
+    """Node ids of collected tests that register an account without saying so.
+
+    Read off the fixture closure and the resolved markers, not off the source
+    text. `item.fixturenames` is the whole closure, so a test that asks for
+    `registered_user` through another fixture is found as surely as one that
+    names it in its own signature; `get_closest_marker` is pytest's own answer,
+    so a marker applied by `pytestmark` at module level, by a parametrisation,
+    or by a decorator that takes arguments counts exactly as a bare
+    `@pytest.mark.destructive` does. The reader this replaced matched
+    `@pytest.mark.<name>` lines with a regular expression and therefore saw
+    none of those three.
+
+    What it does not see: a test that creates an account by calling the API
+    client itself instead of asking for the fixture. There is one of those --
+    `tests/api/test_account_api.py::test_create_get_and_delete_user_account`, which
+    creates the account it is about -- and it carries the marker. Anything else
+    that wants to register without the fixture should take that as the rule.
+
+    Pure, and separate from the hook, so it can be exercised with stub items
+    from `tests/unit/test_local_stand_fixture.py`: a guard with no test for it
+    is a guard that rots.
+    """
+    return [
+        item.nodeid
+        for item in items
+        if ACCOUNT_FIXTURE in item.fixturenames and item.get_closest_marker(DESTRUCTIVE_MARKER) is None
+    ]
 
 
 def _write_environment_properties(results_dir: Path, *, browser_used: bool) -> None:
@@ -160,7 +200,25 @@ def pytest_collection_finish(session: pytest.Session) -> None:
     answer "yes, a browser" for the one job that opens none -- the exact claim
     this is here to stop. `session.items` at this point is what will actually
     run.
+
+    The account guard runs here for the same reason and ahead of everything
+    else, including under `--collect-only`: `session.items` is the selection
+    that would run, and a selection that would register an account without
+    saying so is a session that should not start. It costs one pass over a
+    list, so there is nothing to buy by skipping it.
     """
+    offenders = _unmarked_account_creators(session.items)
+    if offenders:
+        raise pytest.UsageError(
+            "these collected tests register an account but are not marked "
+            f"`{DESTRUCTIVE_MARKER}`: {', '.join(offenders)}.\n"
+            f"Anything that asks for the `{ACCOUNT_FIXTURE}` fixture writes a real "
+            "record into whatever the suite is pointed at, and the drift check "
+            "against the public site is kept read-only by deselecting that marker "
+            '(`-m "smoke and not destructive"`). An unmarked one would create an '
+            "account on somebody else's site. Add "
+            f"`@pytest.mark.{DESTRUCTIVE_MARKER}` to each."
+        )
     if session.config.option.collectonly:
         return
     configured = session.config.getoption("--alluredir", default=None)
