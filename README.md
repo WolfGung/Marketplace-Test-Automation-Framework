@@ -1,18 +1,35 @@
 # Marketplace Test Automation Framework
 
+A test automation framework built from scratch for an online shop: API and browser tests that run in CI on every push, against a live storefront rather than a mock.
+
 [![CI](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml)
 [![live report](https://img.shields.io/badge/live%20report-Allure-brightgreen)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
+[![python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+
+The suite covers three layers of the same shop: an API test suite for the rules behind the data — the catalogue, search, accounts and the answer each gives to input it should reject; browser tests for what only a customer can see; and end-to-end tests that follow a checkout flow from an empty cart to a placed order. Every run publishes an Allure report holding each case, its steps and the trend across runs, so what the suite did can be read without cloning it.
+
+## Coverage
+
+| What is checked | Checks | Where |
+| --- | --- | --- |
+| The REST API | 14 | `tests/api` |
+| The browser | 8 | `tests/ui` |
+| End to end, across both doors | 2 | `tests/e2e` |
+| The application under test | 24 | the three rows above |
+| Of those, the smoke set | 5 | `-m smoke` |
+
+Counted by `pytest --collect-only`, and pinned by `tests/unit/test_showcase_figures.py` so a number here cannot drift away from the suite it describes.
+
+Those are the checks of the marketplace, and they are the only ones counted — here, on the published page, and in the figures. The project also carries checks over its own tooling in [`tests/unit/`](tests/unit): its settings, the diagnostics captured when a browser test fails, the report's failure grouping, the build of the published page, and the pins that keep every number above honest. They are deliberately left out of the arithmetic, because they prove nothing about the application under test.
+
+A check sits at the lowest layer that can still prove the thing that matters. Product listings, search results, account creation and deletion and the answers each gives to input it should reject are data rules, so they are asserted against the REST API, where a failure names its own cause. Only behaviour a person can see is driven through a browser. The end-to-end pair exists because the purchase is the one flow whose whole value is that the separate parts hold together.
 
 Start with the evidence: **[the live Allure report](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)** holds every case, its steps and the trend across runs, and **[the project page](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/)** — generated from the run that produced the numbers on it — carries a recording of the purchase running front to back and **[the Playwright trace of that same purchase](https://trace.playwright.dev/?trace=https://wolfgung.github.io/Marketplace-Test-Automation-Framework/media/checkout-trace.zip)**, which can be stepped through action by action with the page's DOM at each step.
 
 [![The overview of the published Allure report: 24 test cases, 100% passing, split by suite into 14 in tests.api, 8 in tests.ui and 2 in tests.e2e, beside a trend that is green across every publication before it. Categories reads "0 items total" and Executors says there is no information about test executors.](allure-report-screenshot.png)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
 
 That is the published report, photographed from what is actually on `gh-pages`, and the two empty panels are part of what it says. Categories holds nothing because publication waits for all three test jobs, so the run that publishes is a passing one and has no failures to group; Executors is empty because the pipeline writes no executor file. The trend beside them is real: it carries over from the previous publication on every run.
-
-A production-style test automation framework for an e-commerce / marketplace application, built with **Python, Pytest and Playwright**.
-
-The project demonstrates a scalable approach to automated testing across multiple layers — **UI, REST API and end-to-end flows** — with reusable test infrastructure, structured test data, reporting and CI/CD integration.
 
 [![Three bands. At the top the three test directories. Below them the code every test reuses: the HTTP client and the API resources, the page objects, the typed models, the per-run data factory and the settings. At the bottom the application under test, drawn as somebody else's system: the marketplace and its REST API. The API tests reach the API through the client, the browser tests reach the site through Playwright driving Chromium, and the end-to-end path runs down the middle through both doors at once. The figure states a case count for each directory; open it to read them.](showcase/assets/architecture.svg)](showcase/assets/architecture.svg)
 
@@ -39,22 +56,6 @@ This is a third-party public site. Tests create disposable accounts and delete t
 - **Allure Report**
 - **Docker**
 - **CI/CD** (GitHub Actions)
-
-## Coverage
-
-Counted by `pytest --collect-only`, and pinned by `tests/unit/test_showcase_figures.py` so a number here cannot drift away from the suite it describes:
-
-| What is checked | Checks | Where |
-| --- | --- | --- |
-| The REST API | 14 | `tests/api` |
-| The browser | 8 | `tests/ui` |
-| End to end, across both doors | 2 | `tests/e2e` |
-| The application under test | 24 | the three rows above |
-| Of those, the smoke set | 5 | `-m smoke` |
-
-Those are the checks of the marketplace, and they are the only ones counted — here, on the published page, and in the figures. The project also carries checks over its own tooling in [`tests/unit/`](tests/unit): its settings, the diagnostics captured when a browser test fails, the report's failure grouping, the build of the published page, and the pins that keep every number above honest. They are deliberately left out of the arithmetic, because they prove nothing about the application under test.
-
-A check sits at the lowest layer that can still prove the thing that matters. Product listings, search results, account creation and deletion and the answers each gives to input it should reject are data rules, so they are asserted against the REST API, where a failure names its own cause. Only behaviour a person can see is driven through a browser. The end-to-end pair exists because the purchase is the one flow whose whole value is that the separate parts hold together.
 
 ## Four decisions that keep it maintainable
 
