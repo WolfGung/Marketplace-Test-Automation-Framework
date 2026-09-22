@@ -318,7 +318,17 @@ def _capture_failure_diagnostics(page: Page) -> None:
     else:
         _attach_diagnostic(screenshot, name="failure-screenshot", attachment_type=allure.attachment_type.PNG)
 
+    # `page.content()` takes no timeout of its own, so the only bound available
+    # is the page's default -- and without one this capture waits out
+    # `settings.default_timeout_ms` on a page that is already known to be in
+    # trouble. That asymmetry is not theoretical: the screenshot beside it was
+    # cut to five seconds precisely because an unbounded diagnostic once killed
+    # a session, and a killed session skips teardown, which leaves a live
+    # account behind on somebody else's site. The page is closed by its own
+    # fixture immediately after this hook, so lowering its default here costs
+    # nothing that comes later.
     try:
+        page.set_default_timeout(DIAGNOSTIC_CAPTURE_TIMEOUT_MS)
         html = page.content()
     except Exception as exc:
         _attach_diagnostic(
