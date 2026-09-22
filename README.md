@@ -1,8 +1,19 @@
 # E-commerce Test Automation Framework
 
+[![CI](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml)
+[![live report](https://img.shields.io/badge/live%20report-Allure-brightgreen)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
+
+Start with the evidence: **[the live Allure report](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)** holds every case, its steps and the trend across runs, and **[the project page](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/)** — generated from the run that produced the numbers on it — carries a recording of the purchase running front to back.
+
+[![The published Allure report: the suite's results with their steps, durations and the trend across runs.](allure-report-screenshot.png)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
+
 A production-style test automation framework for an e-commerce / marketplace application, built with **Python, Pytest and Playwright**.
 
 The project demonstrates a scalable approach to automated testing across multiple layers — **UI, REST API and end-to-end flows** — with reusable test infrastructure, structured test data, reporting and CI/CD integration.
+
+[![Three bands. At the top the three test directories. Below them the code every test reuses: the HTTP client and the API resources, the page objects, the typed models, the per-run data factory and the settings. At the bottom the application under test, drawn as somebody else's system: the marketplace and its REST API. The API tests reach the API through the client, the browser tests reach the site through Playwright driving Chromium, and the end-to-end path runs down the middle through both doors at once. The figure states a case count for each directory; open it to read them.](showcase/assets/architecture.svg)](showcase/assets/architecture.svg)
+
+Tests hold the assertions; everything reusable sits below them, so a change in the application lands in one file. The end-to-end path is the one route that crosses both doors. [Open the diagram at full size.](showcase/assets/architecture.svg)
 
 ## Application Under Test
 
@@ -14,7 +25,7 @@ It is a good fit for this portfolio project because it exposes:
 - a documented [REST API](https://www.automationexercise.com/api_list) for products, brands, search and accounts
 - realistic API/UI cross-validation scenarios
 
-This is a third-party public site. Tests create disposable accounts and delete them after use. Occasional flakiness from ads, rate limits or downtime is expected.
+This is a third-party public site. Tests create disposable accounts and delete them after use. Occasional flakiness from ads, rate limits or downtime is expected. The pipeline acts on that: every run first probes the storefront, and the browser suite runs only when the probe answers HTTP 200 — otherwise the run states which status it got and that the browser layer was skipped for it, rather than reporting a red suite the application did not cause. The API suite is never gated, because there a failure is the result and not an excuse.
 
 ## Tech Stack
 
@@ -26,22 +37,32 @@ This is a third-party public site. Tests create disposable accounts and delete t
 - **Docker**
 - **CI/CD** (GitHub Actions)
 
-## Testing Approach
+## Coverage
 
-The framework covers:
+Counted by `pytest --collect-only`, and pinned by `tests/unit/test_showcase_figures.py` so a number here cannot drift away from the suite it describes:
 
-- UI testing with Playwright
-- REST API testing
-- End-to-end business scenarios
-- Page Object Model
-- Pytest fixtures
-- Parameterized tests
-- Test data management
-- API/UI integration scenarios
-- Positive and negative testing
-- Test reporting with Allure
-- Containerized test execution
-- CI/CD pipeline integration
+| What is checked | Checks | Where |
+| --- | --- | --- |
+| The REST API | 14 | `tests/api` |
+| The browser | 8 | `tests/ui` |
+| End to end, across both doors | 2 | `tests/e2e` |
+| The application under test | 24 | the three rows above |
+| Of those, the smoke set | 5 | `-m smoke` |
+| The framework itself | 104 | `tests/unit` |
+
+The last row is counted apart from the rest on purpose: those checks prove things about this project's own tooling — its settings, the diagnostics captured when a browser test fails, the report's failure grouping, the build of the published page — and nothing about the marketplace. They are counted at all because the tooling that produces the report is tested too.
+
+A check sits at the lowest layer that can still prove the thing that matters. Product listings, search results, account creation and deletion and the answers each gives to input it should reject are data rules, so they are asserted against the REST API, where a failure names its own cause. Only behaviour a person can see is driven through a browser. The end-to-end pair exists because the purchase is the one flow whose whole value is that the separate parts hold together.
+
+## Four decisions that keep it maintainable
+
+**API responses are parsed into typed models, not read as dictionaries.** The catalogue and the search results go through `ProductsResponse` and `Product` in [`src/ecom_taf/models/`](src/ecom_taf/models) before a test asserts anything about them, and a registration travels the same way in the other direction through `UserAccount`. A field that is renamed, dropped or returned with the wrong type fails there, naming the field, instead of surfacing three assertions later as a `KeyError` — or as a comparison against `None` that happens to pass.
+
+**One fact is checked through two doors.** [`tests/e2e/test_api_ui_product_consistency.py`](tests/e2e/test_api_ui_product_consistency.py) reads a product from the REST API, opens the same product in the browser and compares the name and the price. Both layers can be green while the two disagree; that disagreement is what a customer sees, and neither suite on its own can catch it.
+
+**The suite is a polite guest on a site it does not own.** The `registered_user` fixture in [`tests/conftest.py`](tests/conftest.py) creates a disposable account through the API, hands it to the test and deletes it afterwards, so a run leaves the application as it found it. That is also why the hook that captures a failure screenshot is written never to raise: a crashed session skips teardown, and skipped teardown means an account left behind on somebody else's site.
+
+**Per-run data comes from a factory, not from constants.** [`src/ecom_taf/data/user_factory.py`](src/ecom_taf/data/user_factory.py) builds a fresh account for every test that needs one, address and all. A suite pinned to a constant email passes once and then fails on "already registered", and the usual repair — deleting the record by hand between runs — is a step that cannot exist inside a pipeline.
 
 ## Architecture
 
@@ -56,6 +77,7 @@ tests/
   api/                 # contract / resource tests
   ui/                  # browser tests
   e2e/                 # business flows + API/UI checks
+  unit/                # checks of this framework, not of the marketplace
 ```
 
 The framework is designed with maintainability and scalability in mind:

@@ -103,6 +103,10 @@
   .meta { color: var(--muted); font-size: .95rem; }
 
   figure { margin: 0 0 1.5rem; }
+  /* Each figure is a link to the SVG itself, so a reader on a phone can open
+     it at full size and read the labels. Block, or the anchor would sit on a
+     text baseline and leave a gap under the drawing. */
+  figure a { display: block; }
   figcaption { color: var(--muted); font-size: .9rem; margin-top: .5rem; }
   img, video { display: block; max-width: 100%; height: auto; }
   video {
@@ -274,13 +278,17 @@
 <!--[if diagrams]-->
 <!--[if architecture]-->
     <figure>
-      <img src="assets/architecture.svg" alt="Three bands. At the top the test modules with their case counts: tests/api with 14 cases, tests/ui with 8 and tests/e2e with 2. Below them the code every test reuses: the HTTP client and API resources in src/ecom_taf/api, the page objects in src/ecom_taf/ui/pages, the typed models in src/ecom_taf/models, the per-run data in src/ecom_taf/data/user_factory.py and the settings in src/ecom_taf/config/settings.py. At the bottom the application under test, drawn as somebody else's system: the marketplace automationexercise.com and its REST API. The API tests reach the API through the client, the browser tests reach the site through Playwright driving Chromium, and the end-to-end path runs down the middle through both doors at once.">
+      <a href="assets/architecture.svg">
+        <img src="assets/architecture.svg" alt="Three bands. At the top the test modules with their case counts: tests/api with 14 cases, tests/ui with 8 and tests/e2e with 2. Below them the code every test reuses: the HTTP client and API resources in src/ecom_taf/api, the page objects in src/ecom_taf/ui/pages, the typed models in src/ecom_taf/models, the per-run data in src/ecom_taf/data/user_factory.py and the settings in src/ecom_taf/config/settings.py. At the bottom the application under test, drawn as somebody else's system: the marketplace automationexercise.com and its REST API. The API tests reach the API through the client, the browser tests reach the site through Playwright driving Chromium, and the end-to-end path runs down the middle through both doors at once.">
+      </a>
       <figcaption>Tests hold the assertions; everything reusable sits below them, so a change in the application lands in one file. The end-to-end path is the one route that crosses both doors.</figcaption>
     </figure>
 <!--[end architecture]-->
 <!--[if pipeline]-->
     <figure>
-      <img src="assets/ci-pipeline.svg" alt="A push or a pull request first runs a probe against the marketplace. The API suite runs whatever the probe answered; the browser and end-to-end suites run only when it answered HTTP 200, and are skipped with a stated reason otherwise. Both produce allure-results, and the browser run also produces the recording of the purchase. On main those artefacts go on to restore the Allure history from the gh-pages branch, generate the report, build this page and publish to gh-pages, which GitHub Pages serves. A nightly schedule runs the same probe and the same suite, as a watch on a site this project does not control.">
+      <a href="assets/ci-pipeline.svg">
+        <img src="assets/ci-pipeline.svg" alt="A push or a pull request first runs a probe against the marketplace. The API suite runs whatever the probe answered; the browser and end-to-end suites run only when it answered HTTP 200, and are skipped with a stated reason otherwise. Both produce allure-results, and the browser run also produces the recording of the purchase. On main those artefacts go on to restore the Allure history from the gh-pages branch, generate the report, build this page and publish to gh-pages, which GitHub Pages serves. A nightly schedule runs the same probe and the same suite, as a watch on a site this project does not control.">
+      </a>
       <figcaption>The same pipeline that gates a push publishes this page, so what you are reading came out of a run that had to pass first.</figcaption>
     </figure>
 <!--[end pipeline]-->

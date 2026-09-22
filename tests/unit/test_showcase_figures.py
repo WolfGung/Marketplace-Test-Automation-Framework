@@ -6,14 +6,13 @@ nobody notices a drawing going stale. A client reads the figure in a few
 seconds and never checks it against the repository, so a case added tomorrow
 has to fail the build here rather than quietly make a picture lie.
 
-Two kinds of source state those counts today: the two hand-drawn SVG figures
-on the showcase page, and showcase/assets/cover.html, the template the image
-the profile shows is exported from. Each kind is read the way it is written,
-and each count is pinned against the selection it claims to describe -- of the
-cover's five, three are a directory's whole collection, one is their sum and
-the smoke figure is a marker. The README quotes the same counts and is written
-in a later step of this plan; it adds its own reader and its own lines in
-CLAIMS.
+Three kinds of source state those counts today: the two hand-drawn SVG figures
+on the showcase page, showcase/assets/cover.html -- the template the image the
+profile shows is exported from -- and the coverage table in README.md, which is
+the second thing a reader of this project sees after the published page. Each
+kind is read the way it is written, and each count is pinned against the
+selection it claims to describe: some are a directory's whole collection, some
+are their sum, and the smoke count is a marker that cuts across all of them.
 """
 from __future__ import annotations
 
@@ -40,7 +39,13 @@ FIGURES = ("architecture.svg", "ci-pipeline.svg")
 #: thing a client sees, it is a picture rather than text, and nobody re-reads a
 #: picture to check whether it still adds up.
 COVER = "cover.html"
-SOURCES = (*FIGURES, COVER)
+
+#: The coverage table in the README. It is in this list because the README is
+#: the second most-read thing this project has, it is the one source of these
+#: counts that lives outside showcase/assets, and it is the easiest of the
+#: three to edit without thinking about the suite.
+README = "README.md"
+SOURCES = (*FIGURES, COVER, README)
 
 #: "14 cases", and "1 case" where a figure has to say it — the integration
 #: marker is on exactly one test, and "1 cases" would be a drawing nobody
@@ -68,6 +73,11 @@ FIX = {
         "  PYTHONPATH=. python scripts/make-assets.py\n"
         "then `git add guru-cover-image.png`: the exported image is a tracked file, "
         "and a template nobody exported changes nothing the profile shows."
+    ),
+    ".md": (
+        "The count is a cell in the coverage table under `## Coverage` in {source}: "
+        "edit it there. If a test really was added or removed, the figures under "
+        "showcase/assets/ state the same counts and need the new number too."
     ),
 }
 FIX_DEFAULT = "Edit the number in {source} to match what pytest collects."
@@ -98,11 +108,23 @@ CLAIMS: dict[tuple[str, str], tuple[str, ...]] = {
     # and its second is a marker that cuts across all three.
     (COVER, "automated checks"): ("-m", "", "tests/api", "tests/ui", "tests/e2e"),
     (COVER, "of them in the smoke set"): ("-m", "smoke"),
+    # The README's table says the same things in the same order, plus one the
+    # page states in prose rather than in a figure: the checks of the framework
+    # itself, which are every case in tests/unit and are counted apart from the
+    # marketplace because they prove nothing about it.
+    (README, "The REST API"): ("-m", "", "tests/api"),
+    (README, "The browser"): ("-m", "", "tests/ui"),
+    (README, "End to end, across both doors"): ("-m", "", "tests/e2e"),
+    (README, "The application under test"): ("-m", "", "tests/api", "tests/ui", "tests/e2e"),
+    (README, "Of those, the smoke set"): ("-m", "smoke"),
+    (README, "The framework itself"): ("-m", "", "tests/unit"),
 }
 
 
 def _path(source: str) -> str:
     """Where a source lives, for a message someone has to act on."""
+    if source == README:
+        return README
     return f"showcase/assets/{source}"
 
 
@@ -250,9 +272,102 @@ def _stated(cover: str) -> dict[str, int]:
     return parser.found
 
 
+#: The heading the coverage table sits under, and the one that ends it. Reading
+#: only that section keeps this from finding a number in some other table --
+#: the configuration table's defaults, say -- and calling it a case count.
+COVERAGE_HEADING = "## Coverage"
+
+#: One row of a Markdown table: three cells between four pipes. A row whose
+#: middle cell is not a number is not a stated count -- the header row and the
+#: `| --- |` separator are both rows -- so those are passed over rather than
+#: guessed at.
+TABLE_ROW = re.compile(r"^\|(?P<label>[^|]*)\|(?P<count>[^|]*)\|(?P<where>[^|]*)\|$")
+
+#: Markdown a cell can be dressed in without changing the words a reader sees.
+CELL_DRESSING = re.compile(r"[`*]")
+
+
+def _plain(cell: str) -> str:
+    """One table cell as a reader sees it, with the Markdown taken off."""
+    return " ".join(CELL_DRESSING.sub("", cell).split())
+
+
+def _coverage_section(markdown: str, source: str) -> str:
+    """The `## Coverage` section of a Markdown document, heading excluded."""
+    start = markdown.find(COVERAGE_HEADING)
+    assert start != -1, (
+        f'{source} has no "{COVERAGE_HEADING}" section, so the coverage table '
+        f"this test reads is not where it was. Either the heading was renamed -- "
+        f"fix COVERAGE_HEADING here -- or the table is gone, in which case the "
+        f"README no longer states the counts and these claims should go with it."
+    )
+    body = markdown[start + len(COVERAGE_HEADING):]
+    end = body.find("\n## ")
+    return body if end == -1 else body[:end]
+
+
+def _table_counts(markdown: str, source: str) -> dict[str, int]:
+    """Every count the coverage table states, keyed by the label beside it.
+
+    The same idea as `_drawn` and `_Stats`, in the medium a README is written
+    in: the pairing is read out of the document rather than out of a table kept
+    beside it. A row states one count -- what is being counted, the number, and
+    where a reader can count it themselves -- and it is the first two cells
+    that are pinned here.
+    """
+    found: dict[str, int] = {}
+    for line in _coverage_section(markdown, source).splitlines():
+        row = TABLE_ROW.match(line.strip())
+        if row is None:
+            continue
+        count = _plain(row["count"])
+        if not count.isdigit():
+            continue
+        label = _plain(row["label"])
+        assert label, (
+            f"{source}: the coverage table has a row stating {count} with nothing "
+            f"in its first cell. A row's label is what this test looks its count "
+            f"up by, so a count with no label is a number nobody can check."
+        )
+        assert label not in found, (
+            f'{source}: the coverage table states two counts for "{label}". A '
+            f"label is what this test looks a count up by, so two rows cannot "
+            f"share one."
+        )
+        found[label] = int(count)
+    return found
+
+
+def _require_counts(found: dict[str, int], source: str) -> dict[str, int]:
+    """Refuse an empty reading instead of passing it on.
+
+    Every claim is checked against what the reader finds, so a reader that came
+    back empty from a rewritten README would report success over a document
+    stating nothing at all. This is the one place that says no.
+    """
+    assert found, (
+        f"{source} states no counts at all: nothing under "
+        f'"{COVERAGE_HEADING}" is a table row whose second cell is a number. '
+        f"Either the table stopped quoting counts, or it was rewritten in a way "
+        f"this reader no longer understands -- in which case the numbers the "
+        f"README shows are no longer checked by anything."
+    )
+    return found
+
+
+@cache
+def _tabled(source: str) -> dict[str, int]:
+    """Every count the README's coverage table states."""
+    text = (ROOT / source).read_text(encoding="utf-8")
+    return _require_counts(_table_counts(text, _path(source)), _path(source))
+
+
 def _drawn_source(source: str) -> dict[str, int]:
     """Every count `source` states, dispatched by how that kind is written."""
-    if Path(source).suffix == ".html":
+    suffix = Path(source).suffix
+    if suffix == ".md":
+        return _tabled(source)
+    if suffix == ".html":
         return _stated(source)
     return _drawn(source)
 
@@ -330,3 +445,53 @@ def test_every_case_count_a_figure_states_is_checked() -> None:
         "selection it describes; if nothing was found at all, the figures or "
         "the way this test reads them have changed."
     )
+
+
+# The reader above is the only thing standing between the README's table and a
+# number nobody checks. These three hold it to reading what is written: a count
+# it finds, a reading it must refuse, and the real table with one digit changed.
+
+def test_the_table_reader_reads_the_counts_a_row_states() -> None:
+    """A row is a label and a number, whatever Markdown it is dressed in."""
+    found = _table_counts(
+        "## Coverage\n"
+        "\n"
+        "| What is checked | Checks | Where |\n"
+        "| --- | --- | --- |\n"
+        "| The REST API | 14 | `tests/api` |\n"
+        "| **The application under test** | **24** | the rows above |\n"
+        "\n"
+        "## Configuration\n"
+        "\n"
+        "| `HEADLESS` | 1 | not a case count, and in another section |\n",
+        "a document written for this test",
+    )
+    assert found == {"The REST API": 14, "The application under test": 24}
+
+
+def test_a_table_the_reader_cannot_read_fails_instead_of_finding_nothing() -> None:
+    """A reading that matched nothing is a failure, not a pass over an empty set."""
+    silent = _table_counts("## Coverage\n\nThe counts moved into a picture.\n", README)
+    assert silent == {}, "precondition: this document states no counts the reader can see"
+    with pytest.raises(AssertionError, match="no counts at all"):
+        _require_counts(silent, README)
+
+
+def test_a_number_changed_in_the_table_is_one_this_test_would_catch() -> None:
+    """The pin bites: the reader reads the digits on the page, not a constant."""
+    label = "The REST API"
+    selection = CLAIMS[(README, label)]
+    stated = _tabled(README)[label]
+    assert stated == _collected(selection), "precondition: the README is right today"
+
+    text = (ROOT / README).read_text(encoding="utf-8")
+    tampered_text = text.replace(f"| {label} | {stated} |", f"| {label} | {stated + 1} |", 1)
+    assert tampered_text != text, (
+        f'no row reading "| {label} | {stated} |" is in {README}: this test edits the '
+        f"table as it is written, so a table written differently needs it rewritten too"
+    )
+    tampered = _table_counts(tampered_text, _path(README))
+    assert tampered[label] == stated + 1, (
+        "the reader did not see the changed digit, so it is not reading the table"
+    )
+    assert tampered[label] != _collected(selection)
