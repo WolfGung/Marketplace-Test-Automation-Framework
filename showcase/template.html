@@ -449,7 +449,12 @@
       product defect whatever the real cause turns out to be. What it does
       reliably separate is the pair that matters most for a suite pointed at
       somebody else's site: the application answering wrongly, and the
-      application not answering at all.
+      application not answering at all. Here it has nothing to sort, and by
+      design never will: this page is only ever published by a run in which
+      every check passed, so a failing run stops at the pipeline, where the
+      rule that stops it (<code>.github/workflows/ci.yml</code>), the empty
+      grouping it leaves behind (<code>report/widgets/categories.json</code>)
+      and the runs that did fail are all in the repository.
     </p>
     <p class="links">
       <a class="btn primary" href="report/">Open the Allure report</a>
