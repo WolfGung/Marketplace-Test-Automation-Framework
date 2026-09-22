@@ -97,14 +97,14 @@ CI_RUN_IMAGE = "showcase/images/ci-run.png"
 #: The window the run page is read in. At this width it lays the job graph out
 #: beside the job list, which is the arrangement worth photographing; much
 #: narrower and the graph folds underneath.
-CI_RUN_VIEWPORT = (1400, 900)
+CI_RUN_VIEWPORT = (1400, 1200)
 
 #: What is kept of that window: the run page's own content, starting below the
 #: marketing header a logged-out visitor is served, which says nothing about
 #: this pipeline. The size is fixed so the picture is the same shape every
 #: time and can be pinned; the job icons are checked to be inside it, so a run
 #: that grew another job is a refusal rather than a row sliced in half.
-CI_RUN_SIZE = (1400, 730)
+CI_RUN_SIZE = (1400, 900)
 
 #: What a job icon is allowed to say for the run to be worth photographing.
 #: GitHub writes each job's state into the icon's accessible name, so this is
