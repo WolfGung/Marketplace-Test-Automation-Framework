@@ -164,7 +164,14 @@ Two things worth knowing, both found by running it rather than by reading it. Th
 
 Every setting in the project is here: `src/ecom_taf/config/settings.py` reads
 these names and nothing else, `.env.example` lists the same set, and each is
-read from the environment or from a `.env` beside it.
+read from the environment or from a `.env` beside it. A value set in either
+one is honoured, including over the target `TEST_ENV` selects.
+
+`TEST_ENV` names a pair of addresses — `local` is the stand, `prod` the public
+site — and `BASE_URL` and `API_BASE_URL` override whichever pair it named. That
+is why those two are the only lines commented out in `.env.example`: copy the
+file as it is and a run follows `TEST_ENV`; uncomment one to point the suite at
+a stand on another port without inventing a target for it.
 
 | Variable | Default | Description |
 | --- | --- | --- |

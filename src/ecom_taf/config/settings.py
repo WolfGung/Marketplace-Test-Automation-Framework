@@ -1,4 +1,3 @@
-import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -10,6 +9,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ROOT_DIR = Path(__file__).resolve().parents[3]
 ENV_FILE = ROOT_DIR / ".env"
 ENVIRONMENTS_FILE = Path(__file__).with_name("environments.yaml")
+
+#: The fields `environments.yaml` fills in per named target. Both are addresses
+#: of the shop under test, and both are things a reader may want to point
+#: somewhere else for one run -- a stand on another port, a review deployment --
+#: without inventing a name for it in the YAML.
+NAMED_FIELDS = ("base_url", "api_base_url")
 
 BrowserName = Literal["chromium", "firefox", "webkit"]
 
@@ -42,14 +47,25 @@ class Settings(BaseSettings):
     trace_dir: str = "traces"
 
     def apply_named_environment(self) -> None:
+        """Fill in the addresses `TEST_ENV` names, without overruling the user.
+
+        `environments.yaml` holds a default per target, not an override. A value
+        somebody actually set has to win, or `.env` -- the file the setup
+        instructions tell a reader to copy -- is read and then silently thrown
+        away, which is exactly what happened here: the old test was
+        `"BASE_URL" not in os.environ`, and a dotenv value never reaches
+        `os.environ`. pydantic-settings records every field one of its sources
+        supplied -- the environment, the dotenv file, the constructor -- in
+        `model_fields_set`, so that is the question to ask: not "where did this
+        come from" but "did anyone set it at all".
+        """
         if not ENVIRONMENTS_FILE.exists():
             return
         payload = yaml.safe_load(ENVIRONMENTS_FILE.read_text(encoding="utf-8")) or {}
         named = payload.get(self.env) or {}
-        if "BASE_URL" not in os.environ and "base_url" in named:
-            self.base_url = named["base_url"]
-        if "API_BASE_URL" not in os.environ and "api_base_url" in named:
-            self.api_base_url = named["api_base_url"]
+        for field in NAMED_FIELDS:
+            if field not in self.model_fields_set and field in named:
+                setattr(self, field, named[field])
 
 
 @lru_cache(maxsize=1)
