@@ -100,17 +100,23 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: allure-results-api
-          path: allure-results
+          path: allure-results-api
       - uses: actions/download-artifact@v4
         with:
           name: allure-results-ui
-          path: allure-results
+          path: allure-results-ui
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           name: videos
           path: videos
       - name: Assemble and publish
-        run: bash scripts/publish-showcase.sh allure-results videos
+        run: bash scripts/publish-showcase.sh allure-results-api allure-results-ui videos
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # A previous publication accidentally carried a local dry run's
+          # synthetic results into the trend (see scripts/publish-showcase.sh's
+          # own push guard, added in the same change as this line). Set for
+          # this one publication only, to start the Allure trend over from a
+          # genuinely clean run; a follow-up commit removes it again.
+          RESET_SHOWCASE_HISTORY: "true"

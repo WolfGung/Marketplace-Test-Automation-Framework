@@ -58,18 +58,34 @@ def _write_environment_properties(results_dir: Path) -> None:
     results directory — otherwise a published report shows a failure without
     saying which site, which browser, or which Python produced it, and a
     third party reading it later has no way to tell.
+
+    In CI, this file is written independently by the `api` job (no browser)
+    and the `ui` job (Playwright, headless or not) into their own separate
+    `--alluredir`, and the showcase's publish step later merges both jobs'
+    results into one directory. Two files with the same name and genuinely
+    different content (a different `Browser`, a different `Headless`) would
+    let the later download of one job's artefact silently overwrite the
+    other's, so every key is qualified with the job's own name -- `GITHUB_JOB`,
+    which GitHub Actions sets to exactly `api` or `ui` -- whenever one is set.
+    `showcase/merge.py` is what actually combines the two files; qualifying
+    the keys here is what makes that combination a union instead of a
+    collision. Outside CI there is only ever one job's results in play, so
+    the keys are left bare, matching every environment.properties this
+    project wrote before this qualification existed.
     """
     settings = get_settings()
     results_dir.mkdir(parents=True, exist_ok=True)
+    job = os.getenv("GITHUB_JOB")
+    prefix = f"{job}." if job else ""
     (results_dir / "environment.properties").write_text(
         "\n".join(
             [
-                f"BASE_URL={settings.base_url}",
-                f"API_BASE_URL={settings.api_base_url}",
-                f"Browser={settings.browser}",
-                f"Headless={settings.headless}",
-                f"Python={sys.version.split()[0]}",
-                f"CI={os.getenv('CI', 'false')}",
+                f"{prefix}BASE_URL={settings.base_url}",
+                f"{prefix}API_BASE_URL={settings.api_base_url}",
+                f"{prefix}Browser={settings.browser}",
+                f"{prefix}Headless={settings.headless}",
+                f"{prefix}Python={sys.version.split()[0]}",
+                f"{prefix}CI={os.getenv('CI', 'false')}",
             ]
         ),
         encoding="utf-8",

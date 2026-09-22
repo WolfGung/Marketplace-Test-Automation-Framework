@@ -285,13 +285,20 @@ def _safe_url(url: str) -> str:
 
 
 def _pick_video(video_dir: Path) -> Path | None:
-    """The recording to publish, chosen the way the publish step chooses.
+    """The recording to publish -- the *only* place this choice is made.
 
     Only a name in ``PREFERRED_RECORDINGS`` is the purchase; anything else in
     the directory is a recording of some other case and must not be captioned
     as if it were the order being placed. A run that leaves no preferred file
-    gets no video at all, exactly like ``scripts/publish-showcase.sh``, which
-    has no fallback either.
+    gets no video at all. ``scripts/publish-showcase.sh`` used to keep its own,
+    separate copy of this rule as a second glob-matching loop, and the two
+    went out of step: the script would publish the cross-layer recording as a
+    fallback while this function still decided the page should show none,
+    shipping a real file to ``gh-pages`` that nothing on the page ever
+    referenced. The script now calls ``build_site`` with the real videos
+    directory and does no selection of its own; this function is where a
+    fallback would need to be added if one is ever wanted, precisely so that
+    the page and the file it ships together can never disagree again.
     """
     usable = sorted(
         p for p in Path(video_dir).glob("*.webm")

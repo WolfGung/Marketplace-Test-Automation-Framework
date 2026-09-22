@@ -123,8 +123,8 @@ def test_a_recording_that_exists_is_published_beside_the_page(
 def test_an_unrelated_recording_is_not_captioned_as_the_purchase_flow(
     results: Path, tmp_path: Path
 ) -> None:
-    """`_pick_video` must agree with `scripts/publish-showcase.sh`, which has
-    no fallback: a recording that is not the preferred name is not the
+    """`_pick_video` is the only place this choice is made (see its own
+    docstring): a recording that is not the preferred name is not the
     purchase, and publishing it under that caption would be wrong.
 
     The realistic case is this project's own second end-to-end test: it is

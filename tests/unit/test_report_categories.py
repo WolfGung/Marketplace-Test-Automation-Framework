@@ -50,6 +50,27 @@ def test_environment_properties_names_what_a_reader_needs(tmp_path) -> None:
     assert keys == {"BASE_URL", "API_BASE_URL", "Browser", "Headless", "Python", "CI"}
 
 
+def test_environment_properties_are_qualified_by_job_in_ci(tmp_path, monkeypatch) -> None:
+    """Two CI jobs write this file under the same name; a merge downstream
+    (`showcase/merge.py`) can only union them instead of colliding if each
+    job's keys say which job they came from."""
+    from tests.conftest import _write_environment_properties
+
+    monkeypatch.setenv("GITHUB_JOB", "ui")
+    _write_environment_properties(tmp_path)
+
+    written = (tmp_path / "environment.properties").read_text(encoding="utf-8")
+    keys = {line.split("=", 1)[0] for line in written.splitlines() if line}
+    assert keys == {
+        "ui.BASE_URL",
+        "ui.API_BASE_URL",
+        "ui.Browser",
+        "ui.Headless",
+        "ui.Python",
+        "ui.CI",
+    }
+
+
 def test_a_missing_categories_file_warns_but_does_not_abort_the_session(tmp_path, monkeypatch) -> None:
     """A checkout without `allure/categories.json` still runs its tests.
 
