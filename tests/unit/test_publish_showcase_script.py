@@ -54,6 +54,16 @@ def test_the_script_gives_the_builder_the_real_videos_directory() -> None:
     assert '--videos "$VIDEOS"' in text
 
 
+def test_the_script_has_no_hardcoded_trace_glob() -> None:
+    """The trace is picked by `showcase.build.PREFERRED_TRACES` for exactly the
+    reason the recording is, so the script must not learn to pick one too."""
+    assert "*.zip" not in _text()
+
+
+def test_the_script_gives_the_builder_the_real_traces_directory() -> None:
+    assert '--traces "$TRACES"' in _text()
+
+
 def test_the_script_refuses_to_push_outside_ci_by_default() -> None:
     """A local run must not be able to repeat the accident that seeded
     `gh-pages` with a synthetic publication: the push is gated on either

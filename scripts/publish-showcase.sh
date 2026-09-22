@@ -8,6 +8,7 @@ set -euo pipefail
 API_RESULTS="${1:-allure-results-api}"
 UI_RESULTS="${2:-allure-results-ui}"
 VIDEOS="${3:-videos}"
+TRACES="${4:-traces}"
 RESULTS="allure-results"
 SITE="site"
 ALLURE_VERSION="2.30.0"
@@ -126,11 +127,18 @@ npx -y "allure-commandline@$ALLURE_VERSION" generate "$RESULTS" --clean -o "$SIT
 # recording shipped to `gh-pages` while the page never referenced it. One
 # list now, in `showcase/build.py`; `tests/unit/test_publish_showcase_script.py`
 # fails if a second one comes back here.
+#
+# `--traces "$TRACES"` is the same arrangement for the Playwright trace: one
+# per end-to-end case is written by the run, `build_site` picks the purchase
+# and writes it to `$SITE/media/checkout-trace.zip`, and this script never
+# names a file. The rule that kept the video honest is not worth re-learning
+# on a second artefact.
 PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}" python showcase/build.py \
   --results "$RESULTS" --out "$SITE" \
   --revision "${GITHUB_SHA:-local}" \
   --run-url "${RUN_URL:-}" \
-  --videos "$VIDEOS"
+  --videos "$VIDEOS" \
+  --traces "$TRACES"
 
 mkdir -p "$SITE/assets" "$SITE/media"
 cp showcase/assets/*.svg "$SITE/assets/"

@@ -101,6 +101,17 @@ jobs:
           name: videos
           path: videos
           if-no-files-found: ignore
+      # The Playwright trace of the end-to-end run: the report says what
+      # happened, the trace lets anyone step through it action by action with
+      # the DOM at each step. Uploaded even when the run failed -- that is when
+      # it is worth the most.
+      - name: Upload traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traces
+          path: traces
+          if-no-files-found: ignore
 
   showcase:
     name: Publish showcase
@@ -134,7 +145,12 @@ jobs:
         with:
           name: videos
           path: videos
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: traces
+          path: traces
       - name: Assemble and publish
-        run: bash scripts/publish-showcase.sh allure-results-api allure-results-ui videos
+        run: bash scripts/publish-showcase.sh allure-results-api allure-results-ui videos traces
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

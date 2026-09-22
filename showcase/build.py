@@ -50,6 +50,31 @@ MIN_VIDEO_BYTES = 10 * 1024
 #: step picks by the same name.
 PREFERRED_RECORDINGS = ("*test_logged_in_user_can_place_an_order*.webm",)
 
+#: The Playwright trace the page publishes, by the same rule and for the same
+#: reason as the recording above: a run writes one per end-to-end case, and the
+#: one worth linking is the purchase. Picking by size or by "the only file
+#: there" would eventually link the cross-layer check under a sentence
+#: promising the order.
+PREFERRED_TRACES = ("*test_logged_in_user_can_place_an_order*.zip",)
+
+#: A trace zip below this is a header and no data. Playwright writes a few
+#: megabytes for a flow of this length, so the floor only has to exclude a file
+#: that was truncated or never finished being written.
+MIN_TRACE_BYTES = 10 * 1024
+
+#: Where the published trace ends up, and the address the trace viewer has to
+#: be handed to fetch it. The viewer is a static page at trace.playwright.dev
+#: that reads the zip over HTTP from wherever it is hosted, so this one link
+#: cannot be relative the way every other link on the page is. GitHub Pages
+#: answers with `access-control-allow-origin: *` (verified against a sibling
+#: project on the same host), which is what makes the cross-origin read work at
+#: all; the page also offers the file for download, so a reader is never left
+#: with only a link that depends on somebody else's CORS policy.
+PUBLISHED_TRACE_URL = (
+    "https://wolfgung.github.io/Marketplace-Test-Automation-Framework/media/checkout-trace.zip"
+)
+TRACE_VIEWER_URL = f"https://trace.playwright.dev/?trace={PUBLISHED_TRACE_URL}"
+
 ASSETS_DIR = Path(__file__).parent / "assets"
 
 
@@ -284,6 +309,30 @@ def _safe_url(url: str) -> str:
     return html.escape(candidate, quote=True)
 
 
+def _pick(directory: Path, suffix: str, patterns: tuple[str, ...], floor: int) -> Path | None:
+    """The one file of its kind worth publishing, or nothing.
+
+    Shared by the recording and the trace so the two cannot drift apart: both
+    are written per end-to-end case, both are named after the case that
+    produced them, and for both the page says in words which case a reader is
+    looking at.
+    """
+    usable = sorted(
+        p for p in Path(directory).glob(f"*{suffix}")
+        if p.is_file() and p.stat().st_size > floor
+    )
+    for pattern in patterns:
+        for candidate in usable:
+            if fnmatch(candidate.name, pattern):
+                return candidate
+    return None
+
+
+def _pick_trace(trace_dir: Path) -> Path | None:
+    """The trace of the purchase, or nothing. Same rule as `_pick_video`."""
+    return _pick(trace_dir, ".zip", PREFERRED_TRACES, MIN_TRACE_BYTES)
+
+
 def _pick_video(video_dir: Path) -> Path | None:
     """The recording to publish -- the *only* place this choice is made.
 
@@ -300,15 +349,7 @@ def _pick_video(video_dir: Path) -> Path | None:
     fallback would need to be added if one is ever wanted, precisely so that
     the page and the file it ships together can never disagree again.
     """
-    usable = sorted(
-        p for p in Path(video_dir).glob("*.webm")
-        if p.is_file() and p.stat().st_size > MIN_VIDEO_BYTES
-    )
-    for pattern in PREFERRED_RECORDINGS:
-        for candidate in usable:
-            if fnmatch(candidate.name, pattern):
-                return candidate
-    return None
+    return _pick(video_dir, ".webm", PREFERRED_RECORDINGS, MIN_VIDEO_BYTES)
 
 
 def _place(source: Path | None, target: Path) -> bool:
@@ -352,6 +393,7 @@ def build_site(
     revision: str,
     run_url: str,
     video_dir: Path = Path("videos"),
+    trace_dir: Path = Path("traces"),
     assets_dir: Path = ASSETS_DIR,
 ) -> None:
     summary = summarise(results_dir)
@@ -361,6 +403,7 @@ def build_site(
 
     present = {
         "video": _place(_pick_video(video_dir), out_dir / "media" / "checkout.webm"),
+        "trace": _place(_pick_trace(trace_dir), out_dir / "media" / "checkout-trace.zip"),
         "architecture": _place(
             Path(assets_dir) / "architecture.svg", out_dir / "assets" / "architecture.svg"
         ),
@@ -412,6 +455,7 @@ def build_site(
         "{{FINISHED}}": _text(summary.finished.strftime("%d %B %Y, %H:%M UTC")),
         "{{REVISION}}": _text(revision[:7]),
         "{{RUN_URL}}": safe_run_url,
+        "{{TRACE_VIEWER_URL}}": _text(TRACE_VIEWER_URL),
     }.items():
         page = page.replace(key, value)
 
@@ -425,9 +469,10 @@ if __name__ == "__main__":
     parser.add_argument("--revision", default="local")
     parser.add_argument("--run-url", default="")
     parser.add_argument("--videos", type=Path, default=Path("videos"))
+    parser.add_argument("--traces", type=Path, default=Path("traces"))
     parser.add_argument("--assets", type=Path, default=ASSETS_DIR)
     args = parser.parse_args()
     build_site(
         args.results, args.out, args.revision, args.run_url,
-        video_dir=args.videos, assets_dir=args.assets,
+        video_dir=args.videos, trace_dir=args.traces, assets_dir=args.assets,
     )

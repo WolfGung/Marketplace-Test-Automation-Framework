@@ -269,6 +269,27 @@
       to play here instead of an empty frame.
     </p>
 <!--[end video]-->
+<!--[if trace]-->
+    <h3>The same purchase, one action at a time</h3>
+    <p>
+      The run also recorded a Playwright trace of that order, and a trace is
+      more than a video: it can be stepped through action by action, with the
+      page's DOM as it was at each step, the network the page made, the
+      timings, and the test's own source beside the line that ran. Watching it
+      answers "did it work"; stepping through it answers "what exactly did it
+      do".
+    </p>
+    <p class="links">
+      <a class="btn primary" href="{{TRACE_VIEWER_URL}}">Step through the purchase</a>
+      <a class="btn" href="media/checkout-trace.zip">Download the trace</a>
+    </p>
+    <p class="note">
+      The first link opens the file in Playwright's own trace viewer, which is a
+      static page that reads the trace straight from this site. The second is
+      the same file to keep: <code>playwright show-trace checkout-trace.zip</code>
+      opens it locally, with no upload anywhere.
+    </p>
+<!--[end trace]-->
   </div>
 </section>
 

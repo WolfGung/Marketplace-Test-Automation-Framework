@@ -139,6 +139,58 @@ def test_an_unrelated_recording_is_not_captioned_as_the_purchase_flow(
     assert "recording" in page.lower()
 
 
+def test_a_trace_that_exists_is_published_and_linked_both_ways(
+    results: Path, tmp_path: Path
+) -> None:
+    """The trace is offered twice on purpose: through the hosted viewer, which
+    depends on this site allowing a cross-origin read, and as a file, which
+    depends on nothing. A reader must never be left with only the link that can
+    stop working for a reason outside this project."""
+    traces = tmp_path / "traces"
+    traces.mkdir()
+    (traces / "checkout-test_logged_in_user_can_place_an_order.zip").write_bytes(b"x" * 20_000)
+    out = tmp_path / "site"
+    build_site(results, out, revision="abc1234", run_url="", trace_dir=traces)
+    page = (out / "index.html").read_text(encoding="utf-8")
+    assert "trace.playwright.dev/?trace=" in page
+    assert 'href="media/checkout-trace.zip"' in page
+    assert (out / "media" / "checkout-trace.zip").read_bytes() == b"x" * 20_000
+
+
+def test_a_missing_trace_leaves_no_link_to_a_file_that_is_not_there(
+    results: Path, tmp_path: Path
+) -> None:
+    page = _page(results, tmp_path, trace_dir=tmp_path / "nothing")
+    assert "checkout-trace.zip" not in page
+    assert "trace.playwright.dev" not in page
+
+
+def test_an_unrelated_trace_is_not_linked_as_the_purchase(
+    results: Path, tmp_path: Path
+) -> None:
+    """Same rule as the recording: the second end-to-end case is traced too,
+    and linking its trace under a sentence about the order would misdescribe
+    what a reader is about to step through."""
+    traces = tmp_path / "traces"
+    traces.mkdir()
+    (traces / "checkout-test_product_details_match_api_catalog.zip").write_bytes(b"x" * 20_000)
+    page = _page(results, tmp_path, trace_dir=traces)
+    assert "checkout-trace.zip" not in page
+
+
+def test_the_linked_trace_and_the_published_file_are_the_same_one(
+    results: Path, tmp_path: Path
+) -> None:
+    """The viewer link has to be absolute, so it is the one link on the page
+    that cannot be checked by following it relative to the file beside it. It
+    is built from the same constant the file is published under, and this is
+    what keeps the two spellings from drifting."""
+    from showcase.build import PUBLISHED_TRACE_URL, TRACE_VIEWER_URL
+
+    assert PUBLISHED_TRACE_URL.endswith("/media/checkout-trace.zip")
+    assert TRACE_VIEWER_URL == f"https://trace.playwright.dev/?trace={PUBLISHED_TRACE_URL}"
+
+
 def test_a_run_without_the_end_to_end_pair_does_not_describe_it(tmp_path: Path) -> None:
     """The API suite can run alone -- it is the one CI leg that is never gated.
     A page built from it states 0 end-to-end cases, so it must not also

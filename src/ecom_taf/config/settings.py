@@ -33,9 +33,13 @@ class Settings(BaseSettings):
     http_timeout_s: float = 20.0
 
     #: Record the browser run. Off by default: it costs disk on every run and is
-    #: only wanted when a run is going to be published.
+    #: only wanted when a run is going to be published. The same switch turns on
+    #: the Playwright trace, which is the same kind of artefact for the same
+    #: reason -- a recording of the run, worth its disk only when it is going to
+    #: be looked at.
     record_video: bool = False
     video_dir: str = "videos"
+    trace_dir: str = "traces"
 
     def apply_named_environment(self) -> None:
         if not ENVIRONMENTS_FILE.exists():

@@ -3,7 +3,7 @@
 [![CI](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml)
 [![live report](https://img.shields.io/badge/live%20report-Allure-brightgreen)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
 
-Start with the evidence: **[the live Allure report](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)** holds every case, its steps and the trend across runs, and **[the project page](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/)** — generated from the run that produced the numbers on it — carries a recording of the purchase running front to back.
+Start with the evidence: **[the live Allure report](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)** holds every case, its steps and the trend across runs, and **[the project page](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/)** — generated from the run that produced the numbers on it — carries a recording of the purchase running front to back and **[the Playwright trace of that same purchase](https://trace.playwright.dev/?trace=https://wolfgung.github.io/Marketplace-Test-Automation-Framework/media/checkout-trace.zip)**, which can be stepped through action by action with the page's DOM at each step.
 
 [![The published Allure report: the suite's results with their steps, durations and the trend across runs.](allure-report-screenshot.png)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
 
@@ -121,6 +121,11 @@ pytest -m smoke
 
 # Allure results
 pytest --alluredir=allure-results
+
+# record the end-to-end run: a WebM video and a Playwright trace, one of each
+# per e2e case, under videos/ and traces/
+RECORD_VIDEO=true pytest -m e2e
+playwright show-trace traces/checkout-test_logged_in_user_can_place_an_order.zip
 
 # Allure CLI is not installed via pip. You need Java + Allure 2, then:
 allure serve allure-results

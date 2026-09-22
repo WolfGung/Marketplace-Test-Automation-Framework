@@ -180,6 +180,25 @@ def browser(playwright_runtime: Playwright, settings: Settings) -> Browser:
     browser.close()
 
 
+def _stop_tracing(context: BrowserContext, trace_dir: str, name: str) -> None:
+    """Write the trace out, best-effort, before the context that holds it closes.
+
+    A trace is a courtesy exactly as the recording is, so the same rule applies:
+    it must never turn a green test red. `stop(path=...)` is what actually
+    writes the zip — stopping without a path throws the recording away — and it
+    has to happen while the context is still open, because the tracing
+    machinery lives on the context.
+    """
+    target = Path(trace_dir) / f"checkout-{name}.zip"
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        context.tracing.stop(path=str(target))
+    except Exception as exc:  # a trace is never worth failing a green test over
+        message = f"could not write the trace for {name}: {exc!r}"
+        warnings.warn(message, stacklevel=2)
+        _attach_diagnostic(message, name="trace-unavailable", attachment_type=allure.attachment_type.TEXT)
+
+
 @pytest.fixture
 def context(browser: Browser, settings: Settings, request: pytest.FixtureRequest) -> BrowserContext:
     kwargs = {
@@ -187,17 +206,29 @@ def context(browser: Browser, settings: Settings, request: pytest.FixtureRequest
         "viewport": {"width": 1440, "height": 900},
         "ignore_https_errors": True,
     }
+    # One switch for both artefacts, and only for the end-to-end cases. A trace
+    # per test is a pile of zip files nobody opens; the trace that earns its
+    # disk is the one of the flow a reader would otherwise have to take on
+    # trust, which is the same flow the video records.
     recording = settings.record_video and request.node.get_closest_marker("e2e") is not None
     if recording:
         kwargs["record_video_dir"] = settings.video_dir
         kwargs["record_video_size"] = {"width": 1440, "height": 900}
     context = browser.new_context(**kwargs)
     context.set_default_timeout(settings.default_timeout_ms)
+    if recording:
+        # Screenshots give the trace viewer its filmstrip, snapshots give it the
+        # DOM at every action (which is the whole point: a reader can inspect
+        # the page as it was, not just look at a picture of it), and sources
+        # puts the test's own code beside the step that ran it.
+        context.tracing.start(screenshots=True, snapshots=True, sources=True)
     yield context
     # The page fixture tears down first and closes the page, so `context.pages`
     # is empty by now — the handle has to be captured while the page still
     # exists. The page fixture stashes it for us.
     video = request.node.stash.get(VIDEO_KEY, None)
+    if recording:
+        _stop_tracing(context, settings.trace_dir, request.node.name)
     context.close()  # Playwright only finalises the file when the context closes
     if video is None:
         return
