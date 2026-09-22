@@ -1,1 +1,1 @@
-"""E-commerce marketplace test automation framework."""
+"""Marketplace Test Automation Framework."""
