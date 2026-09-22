@@ -7,6 +7,18 @@ on:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
+    inputs:
+      cross_browser:
+        # Off by default, and checked by the `browsers` job below. Pressing
+        # "Run workflow" is how anyone re-runs this pipeline by hand -- to
+        # force a re-publication, to retry a leg the third-party site failed --
+        # and none of those reasons is a reason to drive the suite at that site
+        # three more times. The traffic should happen when somebody asks for
+        # cross-browser, not when somebody asks for something else and gets it.
+        description: "Also run the browser suite on Firefox and WebKit"
+        type: boolean
+        default: false
+        required: false
 
 jobs:
   reachable:
@@ -115,8 +127,14 @@ jobs:
 
   browsers:
     # The same browser suite on all three engines, and only when somebody asks
-    # for it: `workflow_dispatch` is the one trigger listed here, so a push, a
-    # pull request and the nightly schedule never start it.
+    # for it. Two conditions, not one: `workflow_dispatch` is the only trigger
+    # that can reach this job, so a push, a pull request and the nightly
+    # schedule never start it -- and within a manual run it still waits for the
+    # `cross_browser` input, because the button is also how this pipeline gets
+    # re-run for reasons that have nothing to do with engines. A re-publication
+    # or a retry of a leg the site failed would otherwise fire three more
+    # suites at somebody else's application, which is the exact cost this job
+    # is arranged to avoid.
     #
     # Not a matter of runner minutes. The application under test is a public
     # demo site belonging to somebody else, the suite already creates and
@@ -136,7 +154,10 @@ jobs:
     name: Browser suite on ${{ matrix.browser }}
     runs-on: ubuntu-latest
     needs: reachable
-    if: github.event_name == 'workflow_dispatch' && needs.reachable.outputs.status == '200'
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.cross_browser
+      && needs.reachable.outputs.status == '200'
     strategy:
       fail-fast: false
       matrix:
