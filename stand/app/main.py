@@ -16,6 +16,14 @@ from stand.app.pages import SESSION_COOKIE
 from stand.app.pages import router as pages_router
 from stand.app.store import AccountStore, SessionStore
 
+#: Paths that are served without a session. The REST API is stateless -- every
+#: call carries whatever credentials it needs in its own body -- and the static
+#: files are files. Attaching a session to those was one entry in the session
+#: store per request, kept for the life of the process, plus a `Set-Cookie` on
+#: every JSON answer the API client was never going to send back. Only the
+#: pages have a visitor to remember.
+SESSIONLESS_PREFIXES = ("/api/", "/static/")
+
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Marketplace stand", docs_url=None, redoc_url=None, openapi_url=None)
@@ -24,6 +32,8 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def attach_session(request: Request, call_next):
+        if request.url.path.startswith(SESSIONLESS_PREFIXES):
+            return await call_next(request)
         token, session = app.state.sessions.get_or_create(request.cookies.get(SESSION_COOKIE))
         request.state.session = session
         response = await call_next(request)

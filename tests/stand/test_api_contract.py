@@ -82,3 +82,21 @@ def test_login_verification_names_what_is_missing_or_wrong(client) -> None:
         "responseCode": 404,
         "message": "User not found!",
     }
+
+
+def test_calling_the_api_creates_no_sessions(client, account_form) -> None:
+    """The API door is stateless, and the session store shows it.
+
+    Every call carries what it needs in its own body, so there is no visitor to
+    remember -- but the page middleware used to run for these requests too,
+    minting a session per call and setting a cookie on JSON nobody was going to
+    send back. A process serving the API for a day filled up with one session
+    per request. Twenty calls, a cookie jar that stays empty, and a store that
+    holds nothing.
+    """
+    for _ in range(20):
+        assert client.get("/api/productsList").status_code == 200
+    assert client.post("/api/createAccount", data=account_form).json()["responseCode"] == 201
+
+    assert client.app.state.sessions.count() == 0
+    assert not client.cookies

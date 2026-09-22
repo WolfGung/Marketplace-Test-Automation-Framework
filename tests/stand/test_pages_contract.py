@@ -51,6 +51,10 @@ def test_an_account_created_through_the_api_can_log_in_through_the_form(client, 
     dom = _dom(client.get("/"))
     link = next(a for a in dom.css("a") if "Logged in as" in a.text())
     assert account_form["firstname"] in link.text()
+    # The header greets the account by its name, which is what the site this
+    # reproduces shows there. The first name is the fallback, for an account
+    # created through the API with no name in it at all.
+    assert account_form["name"] in link.text()
 
 
 def test_the_products_grid_names_every_product_in_a_p_inside_productinfo(client) -> None:
@@ -162,4 +166,52 @@ def test_logout_forgets_the_account(client, account_form) -> None:
     client.post("/api/createAccount", data=account_form)
     client.post("/login", data={"email": account_form["email"], "password": account_form["password"]})
     assert client.get("/logout", follow_redirects=False).headers["location"] == "/login"
+    assert "Logged in as" not in client.get("/").text
+
+
+@pytest.mark.parametrize(
+    ("data", "what"),
+    [
+        ({"product_id": "two", "quantity": "1"}, "the product"),
+        ({"product_id": "1", "quantity": "a lot"}, "the quantity"),
+    ],
+    ids=["product_id", "quantity"],
+)
+def test_a_cart_form_that_is_not_numbers_is_a_bad_request(client, data, what) -> None:
+    """A word typed into a number field is the visitor's mistake, not a crash.
+
+    Both values are read off the form and were handed straight to `int()`, so
+    anything that is not a number left the page route raising ValueError --
+    which a page has no answer for: HTTP 500 and a traceback in the log for
+    typing a word into the quantity box. It is a bad request, and it says so.
+    """
+    response = client.post("/add_to_cart", data=data, follow_redirects=False)
+
+    assert response.status_code == 400, what
+    assert response.text == "bad request"
+    assert _dom(client.get("/view_cart")).css_first("#empty_cart") is not None
+
+
+def test_a_signup_finished_for_a_taken_email_is_refused_rather_than_claimed(client, account_form) -> None:
+    """The page cannot announce an account the store refused to create.
+
+    `/signup` turns a taken email away, but `/signup/create` is a route of its
+    own -- reachable directly, and reachable honestly when the email is taken
+    between the two steps. It ignored what the store answered: ACCOUNT CREATED!
+    over a store that had created nothing, and the visitor logged in as the
+    holder of somebody else's account.
+    """
+    assert client.post("/api/createAccount", data=account_form).json()["responseCode"] == 201
+
+    response = client.post(
+        "/signup/create",
+        data={**account_form, "address": account_form["address1"]},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 400
+    dom = HTMLParser(response.text)
+    assert dom.css_first("[data-qa='account-created']") is None
+    signup_form = next(form for form in dom.css("form") if "Signup" in form.text())
+    assert signup_form.css_first("p").text(strip=True) == "Email Address already exist!"
     assert "Logged in as" not in client.get("/").text

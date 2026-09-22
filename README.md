@@ -18,7 +18,7 @@ The suite covers three layers of the same shop: an API test suite for the rules 
 | End to end, across both doors | 2 | `tests/e2e` |
 | The application under test | 24 | the three rows above |
 | Of those, the smoke set | 5 | `-m smoke` |
-| The stand's own contract, without a browser | 27 | `tests/stand` |
+| The stand's own contract, without a browser | 31 | `tests/stand` |
 
 Counted by `pytest --collect-only`, and pinned by `tests/unit/test_showcase_figures.py` so a number here cannot drift away from the suite it describes. The stand's row is the contract of the shop the suite runs against — the selectors and the messages the page objects and the API client depend on — checked with an HTTP client and a parser, in milliseconds, before any browser test could fail on them.
 

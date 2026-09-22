@@ -34,12 +34,22 @@ def current_account(request: Request) -> dict[str, str] | None:
     return request.app.state.accounts.get(session.email) if session.email else None
 
 
-def _render(request: Request, template: str, **context) -> HTMLResponse:
+def _render(request: Request, template: str, *, status_code: int = 200, **context) -> HTMLResponse:
+    """One page, with the account the header shows worked out for it.
+
+    The header on the site this reproduces reads "Logged in as <the account's
+    name>", not its first name: the name is what the registration form asks for
+    first and what the site greets a customer by. An account created through
+    the API may carry no name at all, in which case the first name is what
+    there is, so that is the fallback rather than an empty greeting.
+    """
     account = current_account(request)
+    logged_in_as = (account["name"] or account["firstname"]) if account else None
     return templates.TemplateResponse(
         request,
         template,
-        {"account": account, "logged_in_as": account["firstname"] if account else None, **context},
+        {"account": account, "logged_in_as": logged_in_as, **context},
+        status_code=status_code,
     )
 
 
@@ -53,6 +63,19 @@ def _cart_lines(session: Session) -> list[dict]:
 
 
 async def _form(request: Request) -> dict[str, str]:
+    """This request's form fields, whatever content type they arrived in.
+
+    Deliberately not `api._form`, which answers `{}` to anything that is not
+    `application/x-www-form-urlencoded`. That refusal exists because the REST
+    API reproduces a documented answer -- "parameter is missing in POST
+    request", inside HTTP 200 -- and a door with no such answer has nothing to
+    gain by rejecting a type. A browser posting one of these forms sends
+    urlencoded; the forms here carry no file, so nothing makes one multipart;
+    and Starlette hands back an empty form for a body it does not recognise
+    rather than raising, so a hand-made request with the wrong header lands on
+    the same page an empty form lands on -- "Your email or password is
+    incorrect!" -- which is exactly what it deserves.
+    """
     return {key: str(value) for key, value in (await request.form()).items()}
 
 
@@ -108,7 +131,21 @@ async def signup_create(request: Request):
     fields["address1"] = fields["address1"] or form.get("address", "")
     fields["firstname"] = fields["firstname"] or form.get("first_name", "")
     fields["lastname"] = fields["lastname"] or form.get("last_name", "")
-    request.app.state.accounts.create(fields)
+    if not request.app.state.accounts.create(fields):
+        # The store refuses a taken email and an empty one, and the page used
+        # to say ACCOUNT CREATED! regardless -- then log the visitor in as the
+        # holder of an account this request did not create. The second form on
+        # the login page is where that email was entered, so the answer belongs
+        # there, and it is the same sentence `/signup` gives for the same
+        # reason. The half-finished signup is left in the session: the visitor
+        # is one corrected field away from finishing it.
+        return _render(
+            request,
+            "login.html",
+            status_code=400,
+            login_error=None,
+            signup_error="Email Address already exist!",
+        )
     session_of(request).pending_signup = None
     session_of(request).email = fields["email"]
     return _render(request, "account_created.html")
@@ -146,11 +183,31 @@ async def add_to_cart_link(request: Request, product_id: int):
     return RedirectResponse(f"/products?added={product_id}", status_code=303)
 
 
+def _whole_number(raw: str, fallback: int) -> int | None:
+    """`raw` as an integer, `fallback` when it is empty, None when it is neither.
+
+    The quantity comes from a text input and the product id from a hidden
+    field, so both arrive as whatever was posted. `int("two")` raises
+    ValueError, which FastAPI has no answer for in a page route: the visitor
+    gets a 500 and a traceback in the log for typing a word into a box. None
+    here is the caller's cue to answer 400 instead.
+    """
+    raw = raw.strip()
+    if not raw:
+        return fallback
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 @router.post("/add_to_cart")
 async def add_to_cart_form(request: Request):
     form = await _form(request)
-    product_id = int(form.get("product_id", "0") or 0)
-    quantity = int(form.get("quantity", "1") or 1)
+    product_id = _whole_number(form.get("product_id", ""), 0)
+    quantity = _whole_number(form.get("quantity", ""), 1)
+    if product_id is None or quantity is None:
+        return HTMLResponse("bad request", status_code=400)
     _add(session_of(request), product_id, quantity)
     return RedirectResponse(f"/product_details/{product_id}?added={product_id}", status_code=303)
 

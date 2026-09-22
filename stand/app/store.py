@@ -71,3 +71,12 @@ class SessionStore:
         token = uuid.uuid4().hex
         self._sessions[token] = Session()
         return token, self._sessions[token]
+
+    def count(self) -> int:
+        """How many sessions are being held.
+
+        A method rather than a test reaching into `_sessions`: what a test
+        wants to know is how many sessions exist, and a store can answer that
+        without publishing the dictionary it keeps them in.
+        """
+        return len(self._sessions)
