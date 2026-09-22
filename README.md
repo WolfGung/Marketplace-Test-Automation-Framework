@@ -94,7 +94,7 @@ Business status codes for this AUT often live in JSON `responseCode` even when H
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,stand]"
 playwright install chromium
 cp .env.example .env
 ```
