@@ -1,9 +1,29 @@
+name: marketplace-taf
+
 services:
+  stand:
+    # The shop the suite runs against: the same pages and REST API as the
+    # public demo site, served from this repository.
+    build:
+      context: .
+      dockerfile: stand/Dockerfile
+    ports:
+      - "127.0.0.1:8092:8092"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8092/')"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
   tests:
     build: .
+    depends_on:
+      stand:
+        condition: service_healthy
     environment:
       HEADLESS: "true"
-      BASE_URL: https://www.automationexercise.com
-      API_BASE_URL: https://www.automationexercise.com/api
+      TEST_ENV: local
+      BASE_URL: http://stand:8092
+      API_BASE_URL: http://stand:8092/api
     volumes:
       - ./allure-results:/app/allure-results

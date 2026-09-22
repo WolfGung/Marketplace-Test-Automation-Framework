@@ -9,7 +9,7 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install --no-cache-dir . \
+RUN pip install --no-cache-dir ".[stand]" \
     && playwright install --with-deps chromium
 
 COPY tests ./tests
@@ -23,6 +23,10 @@ COPY tests ./tests
 #               `test_showcase_merge.py`, and read by `test_showcase_figures.py`
 #               (the diagrams and the cover template it checks the numbers in).
 #   scripts/    read by `tests/unit/test_publish_showcase_script.py`.
+#   stand/      imported by tests/stand and by the local_stand fixture;
+#               pytest collects tests/stand before -m selects anything.
+#   .github/    tests/unit/test_ci_targets.py reads ci.yml straight off disk
+#               to check the pipeline's own shape.
 # pytest collects the whole `tests/` tree before it applies `-m`, so a missing
 # import in `tests/unit` aborted the session before a single API test ran --
 # `-m api` inside the container failed on a file that has nothing to do with
@@ -30,6 +34,8 @@ COPY tests ./tests
 COPY allure ./allure
 COPY showcase ./showcase
 COPY scripts ./scripts
+COPY stand ./stand
+COPY .github ./.github
 COPY .env.example ./.env.example
 
 # The API layer by default: it is the one layer that needs no browser, no

@@ -1,7 +1,7 @@
-.PHONY: install test test-api test-ui test-e2e test-smoke report lint
+.PHONY: install test test-api test-ui test-e2e test-smoke test-stand test-public stand report lint
 
 install:
-	python3 -m pip install -e ".[dev]"
+	python3 -m pip install -e ".[dev,stand]"
 	python3 -m playwright install chromium
 
 test:
@@ -19,8 +19,19 @@ test-e2e:
 test-smoke:
 	pytest -m smoke --alluredir=allure-results
 
+test-stand:
+	pytest tests/stand
+
+# The drift check: the public site, read-only cases only.
+test-public:
+	TEST_ENV=prod pytest -m "smoke and not destructive" --alluredir=allure-results
+
+# The stand on its own, for looking at it or for pointing another tool at it.
+stand:
+	uvicorn stand.app.main:app --port 8092
+
 report:
 	allure serve allure-results
 
 lint:
-	ruff check src tests showcase scripts
+	ruff check src tests showcase scripts stand

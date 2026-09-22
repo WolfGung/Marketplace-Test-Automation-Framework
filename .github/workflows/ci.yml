@@ -11,35 +11,23 @@ on:
       cross_browser:
         # Off by default, and checked by the `browsers` job below. Pressing
         # "Run workflow" is how anyone re-runs this pipeline by hand -- to
-        # force a re-publication, to retry a leg the third-party site failed --
-        # and none of those reasons is a reason to drive the suite at that site
-        # three more times. The traffic should happen when somebody asks for
+        # force a re-publication, to retry a leg that flaked -- and none of
+        # those reasons is a reason to spend three times the runner minutes
+        # on the browser suite. The matrix should run when somebody asks for
         # cross-browser, not when somebody asks for something else and gets it.
         description: "Also run the browser suite on Firefox and WebKit"
         type: boolean
         default: false
         required: false
 
-jobs:
-  reachable:
-    name: Storefront reachable from this runner
-    runs-on: ubuntu-latest
-    outputs:
-      status: ${{ steps.probe.outputs.status }}
-    steps:
-      - id: probe
-        name: Probe the storefront
-        run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://www.automationexercise.com/)
-          echo "status=$code" >> "$GITHUB_OUTPUT"
-          echo "The storefront answered HTTP $code"
-          if [ "$code" != "200" ]; then
-            echo "::notice title=Browser tests skipped::The storefront answered HTTP $code from this runner. The application under test is a third-party site this project does not control, so the browser suite is skipped rather than reported as failing. The API suite still ran."
-          fi
+permissions:
+  contents: read
 
+jobs:
   api:
     name: API tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -47,8 +35,10 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: pip install .
-      - name: Run API tests
+        run: pip install ".[stand]"
+      - name: Run API tests against the stand
+        # `TEST_ENV=local` is the default: the `local_stand` fixture starts the
+        # shop in stand/ inside this process because nothing listens on 8092.
         run: pytest -m api --alluredir=allure-results
       - name: Upload Allure results
         if: always()
@@ -60,16 +50,18 @@ jobs:
   framework:
     # The suite's checks of itself, including the pins that hold every number
     # on the published page, on the profile cover and in the README to what
-    # pytest actually collects. Nothing here touches the marketplace, so it is
-    # not gated on the probe and runs on every push and pull request exactly as
-    # the API job does; `showcase` needs it, so a stale number cannot publish.
+    # pytest actually collects, plus the stand's own contract. Nothing here
+    # is gated on anything else, so it runs on every push and pull request
+    # exactly as the API job does; `showcase` needs it, so a stale number
+    # cannot publish.
     #
     # It writes no allure-results and uploads no artifact on purpose. The
     # published page is about the marketplace -- it states the 24 checks of the
     # application and counts nothing else -- and results from this job would put
     # the framework's own cases into the figures it is meant to be guarding.
-    name: Framework checks
+    name: Framework and stand checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -77,15 +69,16 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: pip install .
-      - name: Run the framework's own checks
-        run: pytest tests/unit
+        run: pip install ".[dev,stand]"
+      - name: Lint
+        run: ruff check src tests showcase scripts stand
+      - name: Run the framework's own checks and the stand's contract
+        run: pytest tests/unit tests/stand
 
   ui:
     name: UI and E2E tests
     runs-on: ubuntu-latest
-    needs: reachable
-    if: needs.reachable.outputs.status == '200'
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -93,10 +86,10 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: pip install .
+        run: pip install ".[stand]"
       - name: Install Playwright browser
         run: playwright install --with-deps chromium
-      - name: Run UI and E2E tests
+      - name: Run UI and E2E tests against the stand
         run: pytest -m "ui or e2e" --alluredir=allure-results
         env:
           RECORD_VIDEO: "true"
@@ -127,37 +120,32 @@ jobs:
 
   browsers:
     # The same browser suite on all three engines, and only when somebody asks
-    # for it. Two conditions, not one: `workflow_dispatch` is the only trigger
-    # that can reach this job, so a push, a pull request and the nightly
-    # schedule never start it -- and within a manual run it still waits for the
-    # `cross_browser` input, because the button is also how this pipeline gets
-    # re-run for reasons that have nothing to do with engines. A re-publication
-    # or a retry of a leg the site failed would otherwise fire three more
-    # suites at somebody else's application, which is the exact cost this job
-    # is arranged to avoid.
+    # for it. `workflow_dispatch` is the only trigger that can reach this job,
+    # so a push, a pull request and the nightly schedule never start it -- and
+    # within a manual run it still waits for the `cross_browser` input, because
+    # the button is also how this pipeline gets re-run for reasons that have
+    # nothing to do with engines. A re-publication or a retry of a flaky leg
+    # would otherwise burn three times the runner minutes to learn nothing.
     #
-    # Not a matter of runner minutes. The application under test is a public
-    # demo site belonging to somebody else, the suite already creates and
-    # deletes real accounts on it, and running every push three times over
-    # would triple that traffic to learn nothing: no assertion in this suite is
-    # about how a page renders in one engine versus another, so the second and
-    # third leg answer the same question the first already answered. The engine
-    # is a setting (`Settings.browser`, read from `BROWSER`), and the question
-    # "does the suite still run on Firefox and WebKit" is worth asking
-    # deliberately -- after a Playwright upgrade, when a locator changes,
-    # before showing the project to somebody -- which is exactly when a person
-    # presses the button.
+    # A matter of runner minutes, not of traffic against somebody else's site:
+    # the suite now runs against the stand in this repository, so the cost of
+    # the extra legs is entirely this pipeline's own compute. Tripling it on
+    # every push would still buy nothing, because no assertion in this suite
+    # is about how a page renders in one engine versus another -- the second
+    # and third leg answer the same question the first already answered. The
+    # engine is a setting (`Settings.browser`, read from `BROWSER`), and the
+    # question "does the suite still run on Firefox and WebKit" is worth
+    # asking deliberately -- after a Playwright upgrade, when a locator
+    # changes, before showing the project to somebody -- which is exactly
+    # when a person presses the button.
     #
     # `fail-fast: false` because the point is which engines pass. Cancelling
     # WebKit because Firefox failed would throw away the half of the answer
     # that is not yet known.
     name: Browser suite on ${{ matrix.browser }}
     runs-on: ubuntu-latest
-    needs: reachable
-    if: >-
-      github.event_name == 'workflow_dispatch'
-      && inputs.cross_browser
-      && needs.reachable.outputs.status == '200'
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' && inputs.cross_browser
     strategy:
       fail-fast: false
       matrix:
@@ -169,7 +157,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: pip install .
+        run: pip install ".[stand]"
       - name: Install Playwright browser
         run: playwright install --with-deps ${{ matrix.browser }}
       - name: Run UI and E2E tests on ${{ matrix.browser }}
@@ -186,9 +174,62 @@ jobs:
           name: allure-results-${{ matrix.browser }}
           path: allure-results
 
+  reachable:
+    name: Public site reachable from this runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    outputs:
+      status: ${{ steps.probe.outputs.status }}
+    steps:
+      - id: probe
+        name: Probe the public site
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://www.automationexercise.com/ || true)
+          echo "status=$code" >> "$GITHUB_OUTPUT"
+          echo "The public site answered HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::notice title=Drift check skipped::The public site answered HTTP $code from this runner (000 means no answer at all). The stand in this repository is what the suite runs against; the drift check against the public site is skipped tonight rather than reported as failing."
+          fi
+
+  external:
+    # The drift check: the same suite, the public site the stand reproduces,
+    # and only the cases that read — `smoke and not destructive` creates no
+    # account and places no order on somebody else's site. Nightly and on
+    # request, never on a push; red here is information about the public
+    # site, not about this code, so it never blocks the pipeline or the
+    # publication.
+    name: Drift check against the public site
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: reachable
+    if: needs.reachable.outputs.status == '200'
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install ".[stand]"
+      - name: Install Playwright browser
+        run: playwright install --with-deps chromium
+      - name: Run the non-destructive smoke set against the public site
+        run: pytest -m "smoke and not destructive" --alluredir=allure-results
+        env:
+          TEST_ENV: prod
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-external
+          path: allure-results
+
   showcase:
     name: Publish showcase
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [api, ui, framework]
     # Two gates, and no third one. The branch is gated here; the run being
     # green is gated by `needs`, which holds this job back until the API suite,
@@ -197,11 +238,13 @@ jobs:
     #
     # Which runs reach this job, then: a push to main; a nightly that came back
     # green, which is the point of having one (a page still dated last week
-    # says nothing about a site that answered fine this morning), and a red
+    # says nothing about a stand that answered fine this morning), and a red
     # nightly still publishes nothing because `needs` is unchanged; and a
     # manual dispatch from main, which is how anyone re-publishes by hand. A
     # pull request never does — its `github.ref` is `refs/pull/<n>/merge`, not
-    # this branch.
+    # this branch. `external` is deliberately absent from `needs`: it probes a
+    # site this repository does not control, and a red drift check must never
+    # hold back a publication about the stand this repository does control.
     #
     # There used to be a third gate here, `github.event_name == 'push'`, and it
     # quietly made the "Run workflow" button do nothing for the one reason
