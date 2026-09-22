@@ -83,20 +83,6 @@ That split is the four decisions above in directory form: a test module holds as
 
 Business status codes for this AUT often live in JSON `responseCode` even when HTTP status is 200. The API client normalizes that so tests assert on the real result, not only the transport layer.
 
-## Example E-commerce Scenarios
-
-The test suite includes realistic marketplace workflows such as:
-
-- User registration and authentication
-- Product search and filtering
-- Product details
-- Shopping cart management
-- Checkout
-- Order creation
-- API validation
-- UI/API cross-validation
-- Negative and boundary scenarios
-
 ## Setup
 
 ```bash
