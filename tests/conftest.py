@@ -50,48 +50,72 @@ def copy_categories_into(results_dir: Path) -> None:
     shutil.copyfile(CATEGORIES, results_dir / "categories.json")
 
 
-def _write_environment_properties(results_dir: Path) -> None:
+def _will_drive_a_browser(items: list[pytest.Item]) -> bool:
+    """Whether anything this session is about to run opens a browser.
+
+    Read off the fixture closure rather than off the markers: `browser` is a
+    session fixture that `page` requires and every page object fixture
+    requires in turn, so a case reaches it however it was selected, and a case
+    that stops asking for it stops counting here without anyone remembering to
+    update a list of markers.
+    """
+    return any("browser" in item.fixturenames for item in items)
+
+
+def _write_environment_properties(results_dir: Path, *, browser_used: bool) -> None:
     """Record what a run was tested against, for the report's Environment panel.
 
     Allure only populates that panel when `environment.properties` sits in the
     results directory — otherwise a published report shows a failure without
-    saying which site, which browser, or which Python produced it, and a
-    third party reading it later has no way to tell.
+    saying which site, or which Python produced it, and a third party reading
+    it later has no way to tell.
 
-    In CI, this file is written independently by the `api` job (no browser)
-    and the `ui` job (Playwright, headless or not) into their own separate
-    `--alluredir`, and the showcase's publish step later merges both jobs'
-    results into one directory. Two files with the same name and genuinely
-    different content (a different `Browser`, a different `Headless`) would
-    let the later download of one job's artefact silently overwrite the
-    other's, so every key is qualified with the job's own name -- `GITHUB_JOB`,
-    which GitHub Actions sets to exactly `api` or `ui` -- whenever one is set.
-    `showcase/merge.py` is what actually combines the two files; qualifying
-    the keys here is what makes that combination a union instead of a
-    collision. Outside CI there is only ever one job's results in play, so
-    the keys are left bare, matching every environment.properties this
-    project wrote before this qualification existed.
+    The panel states facts about the run, not the configuration the run was
+    handed, and those are not the same thing. `Settings.browser` and
+    `Settings.headless` always have values -- they default to chromium and
+    headless -- but the `api` job never opens a browser, and a panel reading
+    `api.Browser=chromium` told a reader something that did not happen. So the
+    two browser keys are written only when this session will actually drive
+    one, which is why this runs after collection rather than at session start:
+    what a run will do is not known until its items are.
+
+    In CI, this file is written independently by the `api` job and the `ui`
+    job into their own separate `--alluredir`, and the showcase's publish step
+    later merges both jobs' results into one directory. Two files with the same
+    name and genuinely different content would let the later download of one
+    job's artefact silently overwrite the other's, so every key is qualified
+    with the job's own name -- `GITHUB_JOB`, which GitHub Actions sets to
+    exactly `api` or `ui` -- whenever one is set. `showcase/merge.py` is what
+    actually combines the two files; qualifying the keys here is what makes
+    that combination a union instead of a collision. Outside CI there is only
+    ever one job's results in play, so the keys are left bare, matching every
+    environment.properties this project wrote before this qualification
+    existed.
     """
     settings = get_settings()
     results_dir.mkdir(parents=True, exist_ok=True)
     job = os.getenv("GITHUB_JOB")
     prefix = f"{job}." if job else ""
+    lines = [
+        f"{prefix}BASE_URL={settings.base_url}",
+        f"{prefix}API_BASE_URL={settings.api_base_url}",
+    ]
+    if browser_used:
+        lines += [
+            f"{prefix}Browser={settings.browser}",
+            f"{prefix}Headless={settings.headless}",
+        ]
+    lines += [
+        f"{prefix}Python={sys.version.split()[0]}",
+        f"{prefix}CI={os.getenv('CI', 'false')}",
+    ]
     (results_dir / "environment.properties").write_text(
-        "\n".join(
-            [
-                f"{prefix}BASE_URL={settings.base_url}",
-                f"{prefix}API_BASE_URL={settings.api_base_url}",
-                f"{prefix}Browser={settings.browser}",
-                f"{prefix}Headless={settings.headless}",
-                f"{prefix}Python={sys.version.split()[0]}",
-                f"{prefix}CI={os.getenv('CI', 'false')}",
-            ]
-        ),
+        "\n".join(lines),
         encoding="utf-8",
     )
 
 
-def _prepare_reporting(results_dir: Path) -> None:
+def _prepare_reporting(results_dir: Path, *, browser_used: bool) -> None:
     """Write the categories file and the environment properties, degrading on failure.
 
     Same rule as `_attach_diagnostic` and `_capture_failure_diagnostics` below:
@@ -109,17 +133,28 @@ def _prepare_reporting(results_dir: Path) -> None:
         warnings.warn(f"could not write categories.json into {results_dir}: {exc!r}", stacklevel=2)
 
     try:
-        _write_environment_properties(results_dir)
+        _write_environment_properties(results_dir, browser_used=browser_used)
     except Exception as exc:
         warnings.warn(f"could not write environment.properties into {results_dir}: {exc!r}", stacklevel=2)
 
 
-def pytest_sessionstart(session: pytest.Session) -> None:
-    if session.config.option.collectonly:
+def pytest_collection_modifyitems(
+    session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Write the results directory's two companion files, once collection is in.
+
+    Later than session start, and deliberately: the Environment panel is meant
+    to describe the run, and whether this run opens a browser at all is a fact
+    about its items. Both files are written here so that one of them failing
+    still leaves the other -- which is what `_prepare_reporting` guards -- and
+    both land long before the first test, which is all Allure needs: it reads
+    them out of the results directory when the report is generated.
+    """
+    if config.option.collectonly:
         return
-    configured = session.config.getoption("--alluredir", default=None)
+    configured = config.getoption("--alluredir", default=None)
     if configured:
-        _prepare_reporting(Path(configured))
+        _prepare_reporting(Path(configured), browser_used=_will_drive_a_browser(items))
 
 
 def _attach_diagnostic(body: Any, *, name: str, attachment_type: Any) -> None:

@@ -39,6 +39,11 @@ def test_categories_reach_the_results_directory(tmp_path) -> None:
     assert (tmp_path / "categories.json").is_file()
 
 
+def _keys(results_dir) -> set[str]:
+    written = (results_dir / "environment.properties").read_text(encoding="utf-8")
+    return {line.split("=", 1)[0] for line in written.splitlines() if line}
+
+
 def test_environment_properties_names_what_a_reader_needs(tmp_path, monkeypatch) -> None:
     """The Environment panel is only useful if it names the run's actual context.
 
@@ -51,11 +56,22 @@ def test_environment_properties_names_what_a_reader_needs(tmp_path, monkeypatch)
     from tests.conftest import _write_environment_properties
 
     monkeypatch.delenv("GITHUB_JOB", raising=False)
-    _write_environment_properties(tmp_path)
+    _write_environment_properties(tmp_path, browser_used=True)
 
-    written = (tmp_path / "environment.properties").read_text(encoding="utf-8")
-    keys = {line.split("=", 1)[0] for line in written.splitlines() if line}
-    assert keys == {"BASE_URL", "API_BASE_URL", "Browser", "Headless", "Python", "CI"}
+    assert _keys(tmp_path) == {"BASE_URL", "API_BASE_URL", "Browser", "Headless", "Python", "CI"}
+
+
+def test_a_run_that_opens_no_browser_does_not_report_one(tmp_path, monkeypatch) -> None:
+    """`Settings.browser` and `Settings.headless` always hold a value, because
+    they have defaults. The `api` job never opens a browser, so writing them
+    from its session put `api.Browser=chromium` in front of a reader as a fact
+    about a job that launched nothing."""
+    from tests.conftest import _write_environment_properties
+
+    monkeypatch.delenv("GITHUB_JOB", raising=False)
+    _write_environment_properties(tmp_path, browser_used=False)
+
+    assert _keys(tmp_path) == {"BASE_URL", "API_BASE_URL", "Python", "CI"}
 
 
 def test_environment_properties_are_qualified_by_job_in_ci(tmp_path, monkeypatch) -> None:
@@ -65,11 +81,9 @@ def test_environment_properties_are_qualified_by_job_in_ci(tmp_path, monkeypatch
     from tests.conftest import _write_environment_properties
 
     monkeypatch.setenv("GITHUB_JOB", "ui")
-    _write_environment_properties(tmp_path)
+    _write_environment_properties(tmp_path, browser_used=True)
 
-    written = (tmp_path / "environment.properties").read_text(encoding="utf-8")
-    keys = {line.split("=", 1)[0] for line in written.splitlines() if line}
-    assert keys == {
+    assert _keys(tmp_path) == {
         "ui.BASE_URL",
         "ui.API_BASE_URL",
         "ui.Browser",
@@ -77,6 +91,22 @@ def test_environment_properties_are_qualified_by_job_in_ci(tmp_path, monkeypatch
         "ui.Python",
         "ui.CI",
     }
+
+
+def test_whether_a_browser_is_opened_is_read_off_the_fixture_closure() -> None:
+    """The fact the panel now depends on has to be read from the session, not
+    guessed from a marker: `browser` is a session fixture that `page` requires
+    and every page object fixture requires in turn, so a case reaches it
+    however it was selected."""
+    from tests.conftest import _will_drive_a_browser
+
+    class _Item:
+        def __init__(self, *fixtures: str) -> None:
+            self.fixturenames = list(fixtures)
+
+    assert _will_drive_a_browser([_Item("page", "context", "browser")])
+    assert not _will_drive_a_browser([_Item("http_client", "products_api")])
+    assert not _will_drive_a_browser([])
 
 
 def test_a_missing_categories_file_warns_but_does_not_abort_the_session(tmp_path, monkeypatch) -> None:
@@ -91,7 +121,7 @@ def test_a_missing_categories_file_warns_but_does_not_abort_the_session(tmp_path
     results_dir = tmp_path / "results"
 
     with pytest.warns(UserWarning, match="categories.json"):
-        conftest._prepare_reporting(results_dir)  # must not raise
+        conftest._prepare_reporting(results_dir, browser_used=False)  # must not raise
 
     assert not (results_dir / "categories.json").exists()
     # the environment write is independent and must still have happened
@@ -109,7 +139,7 @@ def test_a_broken_environment_write_warns_but_does_not_abort_the_session(tmp_pat
     results_dir = tmp_path / "results"
 
     with pytest.warns(UserWarning, match="environment.properties"):
-        conftest._prepare_reporting(results_dir)  # must not raise
+        conftest._prepare_reporting(results_dir, browser_used=False)  # must not raise
 
     assert (results_dir / "categories.json").is_file()
     assert not (results_dir / "environment.properties").exists()
@@ -123,7 +153,7 @@ def test_an_unwritable_results_directory_does_not_abort_the_session(tmp_path) ->
     blocked.write_text("occupies the path a results directory needs")
 
     with pytest.warns(UserWarning):
-        conftest._prepare_reporting(blocked)  # must not raise
+        conftest._prepare_reporting(blocked, browser_used=False)  # must not raise
 
 
 class _FakeOption:
@@ -146,38 +176,50 @@ class _FakeSession:
         self.config = config
 
 
-def test_sessionstart_skips_reporting_on_collect_only(monkeypatch, tmp_path) -> None:
+class _BrowserItem:
+    fixturenames = ["page", "context", "browser"]
+
+
+def _record(monkeypatch, conftest) -> list[tuple[Path, bool]]:
+    calls: list[tuple[Path, bool]] = []
+    monkeypatch.setattr(
+        conftest,
+        "_prepare_reporting",
+        lambda results_dir, *, browser_used: calls.append((results_dir, browser_used)),
+    )
+    return calls
+
+
+def test_collection_skips_reporting_on_collect_only(monkeypatch, tmp_path) -> None:
     import tests.conftest as conftest
 
-    calls: list[Path] = []
-    monkeypatch.setattr(conftest, "_prepare_reporting", calls.append)
-
-    session = _FakeSession(_FakeConfig(collectonly=True, alluredir=str(tmp_path)))
-    conftest.pytest_sessionstart(session)  # type: ignore[arg-type]
+    calls = _record(monkeypatch, conftest)
+    config = _FakeConfig(collectonly=True, alluredir=str(tmp_path))
+    conftest.pytest_collection_modifyitems(_FakeSession(config), config, [])  # type: ignore[arg-type]
 
     assert calls == []
 
 
-def test_sessionstart_skips_reporting_without_alluredir(monkeypatch) -> None:
+def test_collection_skips_reporting_without_alluredir(monkeypatch) -> None:
     import tests.conftest as conftest
 
-    calls: list[Path] = []
-    monkeypatch.setattr(conftest, "_prepare_reporting", calls.append)
-
-    session = _FakeSession(_FakeConfig(collectonly=False, alluredir=None))
-    conftest.pytest_sessionstart(session)  # type: ignore[arg-type]
+    calls = _record(monkeypatch, conftest)
+    config = _FakeConfig(collectonly=False, alluredir=None)
+    conftest.pytest_collection_modifyitems(_FakeSession(config), config, [])  # type: ignore[arg-type]
 
     assert calls == []
 
 
-def test_sessionstart_prepares_reporting_when_alluredir_is_set(monkeypatch, tmp_path) -> None:
+def test_collection_prepares_reporting_when_alluredir_is_set(monkeypatch, tmp_path) -> None:
+    """And hands on what the collected items say about a browser, which is the
+    fact the Environment panel now reports rather than assumes."""
     import tests.conftest as conftest
 
-    calls: list[Path] = []
-    monkeypatch.setattr(conftest, "_prepare_reporting", calls.append)
-
+    calls = _record(monkeypatch, conftest)
     target = tmp_path / "results"
-    session = _FakeSession(_FakeConfig(collectonly=False, alluredir=str(target)))
-    conftest.pytest_sessionstart(session)  # type: ignore[arg-type]
+    config = _FakeConfig(collectonly=False, alluredir=str(target))
+    conftest.pytest_collection_modifyitems(  # type: ignore[arg-type]
+        _FakeSession(config), config, [_BrowserItem()],
+    )
 
-    assert calls == [target]
+    assert calls == [(target, True)]

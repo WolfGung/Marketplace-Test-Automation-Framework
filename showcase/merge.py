@@ -6,10 +6,11 @@ per run, so copying both sets into one directory cannot collide. Two
 fixed-name companion files are a different story: `categories.json` is
 copied verbatim from the same file in the repository by every job (see
 `tests/conftest.py::copy_categories_into`), so it is identical by
-construction, but `environment.properties` is written per job from that
-job's own settings (see `_write_environment_properties`), so the API-only
-job and the browser job genuinely disagree on it -- different `Browser`,
-different `Headless`, and anything else that varies between them.
+construction, but `environment.properties` is written per job from what that
+job actually did (see `_write_environment_properties`), so the API-only job
+and the browser job genuinely disagree on it -- the browser job names the
+engine it drove and whether it ran headless, the API job opens no browser and
+so names neither, and anything else that varies between them varies here.
 
 Copying two results directories into the same target by filename the way an
 artefact download naturally would makes the second job's copy of each
