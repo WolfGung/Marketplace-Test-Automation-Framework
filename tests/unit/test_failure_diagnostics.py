@@ -5,6 +5,7 @@ from typing import Any
 
 import allure
 import pytest
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from tests.conftest import _capture_failure_diagnostics
 
@@ -12,24 +13,29 @@ from tests.conftest import _capture_failure_diagnostics
 class _RaisingPage:
     """Stands in for a closed/dead Playwright page: both captures fail."""
 
-    def __init__(self) -> None:
-        self.default_timeout_ms: int | None = None
-
     def screenshot(self, *, full_page: bool, timeout: int) -> bytes:
         raise RuntimeError("screenshot boom")
-
-    def set_default_timeout(self, timeout: float) -> None:
-        self.default_timeout_ms = int(timeout)
 
     def content(self) -> str:
         raise RuntimeError("content boom")
 
 
-class _SlowPage(_RaisingPage):
-    """A page whose HTML capture would hang: it records what bounded it."""
+class _HungPage(_RaisingPage):
+    """A page whose main thread is blocked: the screenshot times out.
+
+    `content()` is recorded rather than made to hang, because it has no
+    timeout of its own in this Playwright version -- calling it for real here
+    would make this test hang exactly the way the guard exists to prevent.
+    """
+
+    def __init__(self) -> None:
+        self.content_was_called = False
+
+    def screenshot(self, *, full_page: bool, timeout: int) -> bytes:
+        raise PlaywrightTimeoutError(f"Timeout {timeout}ms exceeded.")
 
     def content(self) -> str:
-        assert self.default_timeout_ms is not None, "content() ran with no bound on it"
+        self.content_was_called = True
         return "<html></html>"
 
 
@@ -63,19 +69,26 @@ def test_a_broken_allure_attach_does_not_take_the_capture_down_either(
         _capture_failure_diagnostics(_RaisingPage())  # must not raise even here
 
 
-def test_the_html_capture_is_bounded_like_the_screenshot_beside_it(
+def test_a_timed_out_screenshot_skips_the_unboundable_html_capture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`page.content()` takes no timeout argument, so an unbounded call waits
-    out the suite's ordinary navigation timeout on a page already known to be
-    in trouble -- on top of the failure being reported. The screenshot was cut
-    to five seconds for that reason; this closes the same gap on the capture
-    next to it."""
-    from tests.conftest import DIAGNOSTIC_CAPTURE_TIMEOUT_MS
+    """`page.content()` takes no timeout argument, and nothing else bounds it
+    either in this Playwright version -- `set_default_timeout` does not reach
+    it. So a screenshot that times out is treated as a canary: the page cannot
+    be trusted to serialise its DOM quickly either, and `content()` must not
+    be attempted at all, or this diagnostic could reproduce the very hang it
+    exists to catch."""
+    attached: list[tuple[Any, str, Any]] = []
 
-    monkeypatch.setattr(allure, "attach", lambda *a, **k: None)
-    page = _SlowPage()
+    def fake_attach(body: Any, *, name: str, attachment_type: Any) -> None:
+        attached.append((body, name, attachment_type))
 
-    _capture_failure_diagnostics(page)
+    monkeypatch.setattr(allure, "attach", fake_attach)
+    page = _HungPage()
 
-    assert page.default_timeout_ms == DIAGNOSTIC_CAPTURE_TIMEOUT_MS
+    _capture_failure_diagnostics(page)  # must not raise, must not hang
+
+    assert page.content_was_called is False
+    names = [name for _, name, _ in attached]
+    assert names == ["failure-screenshot-unavailable", "failure-html-skipped"]
+    assert "timed out" in attached[1][0]

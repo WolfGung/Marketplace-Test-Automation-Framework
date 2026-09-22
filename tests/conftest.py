@@ -10,6 +10,7 @@ from typing import Any
 import allure
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright, Video, sync_playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from ecom_taf.api import AccountApi, HttpClient, ProductsApi
 from ecom_taf.config import Settings, get_settings
@@ -317,6 +318,37 @@ def _capture_failure_diagnostics(page: Page) -> None:
     # skip fixture teardown, e.g. `registered_user`'s account cleanup, entirely).
     try:
         screenshot = page.screenshot(full_page=True, timeout=DIAGNOSTIC_CAPTURE_TIMEOUT_MS)
+    except PlaywrightTimeoutError as exc:
+        _attach_diagnostic(
+            f"Could not capture failure screenshot: {exc!r}",
+            name="failure-screenshot-unavailable",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+        # `page.content()` takes no `timeout` argument, and nothing else bounds
+        # it either: `set_default_timeout` looks like it should, but it does
+        # not -- `Frame.content()` sends its request with no timeout
+        # calculator at all in this Playwright version, so the default is
+        # never consulted. Verified against a real hung page: with the page's
+        # main thread blocked and a 500ms default timeout, `content()` still
+        # returned after 7.81s while `screenshot(timeout=500)` raised at
+        # 0.50s under the identical hang. That asymmetry is exactly what this
+        # hook exists to avoid -- an unbounded diagnostic once killed a
+        # session before teardown ran, leaving a live account behind on
+        # somebody else's site. Since there is no genuine way to bound
+        # `content()` here, the screenshot above is used as a canary instead:
+        # a page that cannot produce a screenshot within
+        # `DIAGNOSTIC_CAPTURE_TIMEOUT_MS` is a page that cannot be trusted to
+        # serialise its DOM in that time either, so `content()` is skipped
+        # entirely rather than attempted unbounded.
+        _attach_diagnostic(
+            "Skipped: the failure screenshot timed out, and page.content() has "
+            "no timeout mechanism of its own in this Playwright version to "
+            "bound it with -- calling it here would risk the same unbounded "
+            "hang the screenshot timeout exists to avoid.",
+            name="failure-html-skipped",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+        return
     except Exception as exc:
         _attach_diagnostic(
             f"Could not capture failure screenshot: {exc!r}",
@@ -326,17 +358,7 @@ def _capture_failure_diagnostics(page: Page) -> None:
     else:
         _attach_diagnostic(screenshot, name="failure-screenshot", attachment_type=allure.attachment_type.PNG)
 
-    # `page.content()` takes no timeout of its own, so the only bound available
-    # is the page's default -- and without one this capture waits out
-    # `settings.default_timeout_ms` on a page that is already known to be in
-    # trouble. That asymmetry is not theoretical: the screenshot beside it was
-    # cut to five seconds precisely because an unbounded diagnostic once killed
-    # a session, and a killed session skips teardown, which leaves a live
-    # account behind on somebody else's site. The page is closed by its own
-    # fixture immediately after this hook, so lowering its default here costs
-    # nothing that comes later.
     try:
-        page.set_default_timeout(DIAGNOSTIC_CAPTURE_TIMEOUT_MS)
         html = page.content()
     except Exception as exc:
         _attach_diagnostic(
