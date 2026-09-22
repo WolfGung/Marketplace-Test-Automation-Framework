@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Marketplace Test Automation — cover</title>
+<title>Marketplace Test Automation Framework — cover</title>
 <!--
   Source of `guru-cover-image.png`, exported by scripts/make-assets.py at
   exactly 1536x1024 — the size the profile expects, and the size it crops
@@ -94,10 +94,11 @@
     font-weight: 900;
     line-height: 1.02;
     letter-spacing: -0.028em;
-    /* Two lines, and readable when the profile shrinks the cover to a
-       thumbnail: at 320px wide this is still around 17px tall. The size also
-       leaves "Test Automation" room on a face wider than the one here, so a
-       render on another machine does not wrap the title into three lines. */
+    /* Three lines, one word group each, and readable when the profile shrinks
+       the cover to a thumbnail: at 320px wide this is still around 17px tall.
+       The size also leaves the longest of the three, "Test Automation", room
+       on a face wider than the one here, so a render on another machine does
+       not wrap a line in two. */
   }
   h1 .second { display: block; }
 
@@ -236,7 +237,7 @@
 
   <div class="sheet">
     <div class="say">
-      <h1>Marketplace<span class="second">Test Automation</span></h1>
+      <h1>Marketplace<span class="second">Test Automation</span><span class="second">Framework</span></h1>
       <p class="claim">The purchase is driven front to back &mdash; the browser and the
         REST API in the same test</p>
 
