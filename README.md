@@ -1,13 +1,11 @@
 # Marketplace Test Automation Framework
 
-A test automation framework built from scratch for an online shop: API and browser tests that run in CI on every push, against a small shop shipped in this repository — the same pages and API as a public demo site — with a nightly drift check against that public site.
+A test automation framework built from scratch for an online shop: API and browser tests run in CI against a stand shipped in this repository.
 
 [![CI](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml/badge.svg)](https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/workflows/ci.yml)
 [![live report](https://img.shields.io/badge/live%20report-Allure-brightgreen)](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
-
-The suite covers three layers of the same shop: an API test suite for the rules behind the data — the catalogue, search, accounts and the answer each gives to input it should reject; browser tests for what only a customer can see; and end-to-end tests that follow a checkout flow from an empty cart to a placed order. Every run publishes an Allure report holding each case, its steps and the trend across runs, so what the suite did can be read without cloning it.
 
 ## Coverage
 
@@ -24,7 +22,19 @@ Counted by `pytest --collect-only`, and pinned by `tests/unit/test_showcase_figu
 
 The rows above the stand's are the checks of the marketplace, and they are the only ones counted — here, on the published page, and in the figures. The stand's contract is not one of them, and neither are the checks this project carries over its own tooling in [`tests/unit/`](tests/unit): its settings, the diagnostics captured when a browser test fails, the report's failure grouping, the build of the published page, and the pins that keep every number above honest. Both are deliberately left out of the arithmetic, because neither proves anything about the application under test.
 
+## What this shows
+
+- **An API test suite and end-to-end tests for a checkout.** The API suite checks the catalogue, search and accounts; the purchase is driven through the browser and checked through the API.
+- **A suite that does not depend on someone else's website.** CI runs against a stand in the repository; a nightly job only reports drift of the public site.
+- **Failures a developer can act on.** Every browser test keeps a video and a trace, and every run publishes an Allure report with a trend.
+
+## How the checks are layered
+
+The suite covers three layers of the same shop: an API test suite for the rules behind the data — the catalogue, search, accounts and the answer each gives to input it should reject; browser tests for what only a customer can see; and end-to-end tests that follow a checkout flow from an empty cart to a placed order. Every run publishes an Allure report holding each case, its steps and the trend across runs, so what the suite did can be read without cloning it.
+
 A check sits at the lowest layer that can still prove the thing that matters. Product listings, search results, account creation and deletion and the answers each gives to input it should reject are data rules, so they are asserted against the REST API, where a failure names its own cause. Only behaviour a person can see is driven through a browser. The end-to-end pair exists because the purchase is the one flow whose whole value is that the separate parts hold together.
+
+## Evidence
 
 Start with the evidence: **[the live Allure report](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/report/)** holds every case, its steps and the trend across runs, and **[the project page](https://wolfgung.github.io/Marketplace-Test-Automation-Framework/)** — generated from the run that produced the numbers on it — carries a recording of the purchase running front to back and **[the Playwright trace of that same purchase](https://trace.playwright.dev/?trace=https://wolfgung.github.io/Marketplace-Test-Automation-Framework/media/checkout-trace.zip)**, which can be stepped through action by action with the page's DOM at each step.
 
