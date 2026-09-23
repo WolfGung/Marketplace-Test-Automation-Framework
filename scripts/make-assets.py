@@ -6,10 +6,8 @@ report screenshot comes from the real thing — a generated Allure report served
 over HTTP — so refreshing it is re-running this script instead of letting it
 age into a lie.
 
-The profile banner is not rendered here. It is a profile-level asset,
-identical across the owner's projects, and it is committed as
-`guru-profile-banner-1000x250.png`: a second banner that almost matched the
-first would look wrong beside it in the same profile.
+The profile banner is not part of this repository. It is a profile-level
+asset that lives with the profile, not with any one project.
 
 Three things this script refuses to do, because each fails silently otherwise:
 
