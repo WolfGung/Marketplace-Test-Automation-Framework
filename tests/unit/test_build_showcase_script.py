@@ -34,6 +34,7 @@ import http.server
 import json
 import os
 import re
+import shlex
 import shutil
 import socket
 import subprocess
@@ -192,6 +193,24 @@ echo "npx was called: these tests hand the script its Allure through ALLURE_BIN"
 exit 97
 """
 
+#: cp as macOS has it, as far as the build is concerned: GNU's `-t` is not an
+#: option there, and a clean clone has to build on macOS too. Everything else
+#: goes to the real cp, so a GNU-only copy fails here on Linux as well.
+_BSD_CP = """#!/bin/sh
+for arg in "$@"; do
+  case "$arg" in
+    --target-directory*) refuse=1 ;;
+    --*) ;;
+    -*t*) refuse=1 ;;
+  esac
+done
+if [ -n "${refuse:-}" ]; then
+  echo "cp: illegal option -- t" >&2
+  exit 64
+fi
+exec @CP@ "$@"
+"""
+
 #: Every name a proxy setting goes by, in lower case; each also has an upper-case
 #: twin. The script tests point all of them at a closed port, loopback exempt.
 _PROXY_VARIABLES = ("http_proxy", "https_proxy", "all_proxy", "no_proxy")
@@ -231,11 +250,17 @@ class PublishedSite:
     root: Path
     url: str
     requested: list[str]
+    #: Paths whose next request gets a 503, as from a server that is briefly
+    #: unavailable; the request after that is served as usual.
+    failing_once: set[str]
 
     def publish(self, path: str, body: str) -> None:
         target = self.root / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(body, encoding="utf-8")
+
+    def fail_next(self, name: str) -> None:
+        self.failing_once.add(f"/report/history/{name}.json")
 
 
 @pytest.fixture
@@ -244,10 +269,15 @@ def published_site(tmp_path: Path) -> Iterator[PublishedSite]:
     root = tmp_path / "published-site"
     root.mkdir()
     requested: list[str] = []
+    failing_once: set[str] = set()
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def do_GET(self) -> None:
             requested.append(self.path)
+            if self.path in failing_once:
+                failing_once.discard(self.path)
+                self.send_error(503)
+                return
             super().do_GET()
 
         def log_message(self, *args: object) -> None:
@@ -257,7 +287,10 @@ def published_site(tmp_path: Path) -> Iterator[PublishedSite]:
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        yield PublishedSite(root=root, url=f"http://127.0.0.1:{server.server_address[1]}/", requested=requested)
+        yield PublishedSite(
+            root=root, url=f"http://127.0.0.1:{server.server_address[1]}/",
+            requested=requested, failing_once=failing_once,
+        )
     finally:
         server.shutdown()
         server.server_close()
@@ -299,13 +332,21 @@ def checkout(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def tools(tmp_path: Path) -> Path:
-    """What the script finds first on PATH: a fake Allure, a refusing npx, and this interpreter."""
+    """What the script finds first on PATH: a fake Allure, a refusing npx, cp as macOS has it,
+    and this interpreter without its site-packages.
+
+    `-S` is the showcase job's own condition: it installs nothing, so the build
+    and the modules it runs may use the standard library and nothing else. A
+    third-party import there would otherwise pass every check and fail only on
+    main, at publication time.
+    """
     directory = tmp_path / "tools"
     directory.mkdir()
     _executable(directory / "allure", _FAKE_ALLURE)
     _executable(directory / "npx", _NO_NPX)
+    _executable(directory / "cp", _BSD_CP.replace("@CP@", shlex.quote(shutil.which("cp") or "false")))
     for name in ("python", "python3"):
-        _executable(directory / name, f'#!/bin/sh\nexec "{sys.executable}" "$@"\n')
+        _executable(directory / name, f"#!/bin/sh\nexec {shlex.quote(sys.executable)} -S \"$@\"\n")
     return directory
 
 
@@ -475,6 +516,23 @@ def test_a_history_file_of_the_wrong_shape_is_left_out(
     assert "retry-trend.json" in result.stderr
 
 
+def test_a_transient_server_error_does_not_cost_the_trend(
+    build, published_site: PublishedSite, tmp_path: Path
+) -> None:
+    """A file lost to one failed request is lost for good: the next publication
+    can only read back what this one published. So a server error that clears
+    on the next request must not keep the file out -- it is asked for again."""
+    served = _served()
+    _publish_history(published_site, served)
+    published_site.fail_next("history-trend")
+
+    result = build(published_site.url)
+
+    assert result.returncode == 0, result.stderr
+    assert _saw(tmp_path) == {f"{name}.json": body for name, body in served.items()}
+    assert published_site.requested.count("/report/history/history-trend.json") == 2
+
+
 def test_a_first_publication_builds_without_a_trend(
     checkout: Path, build, published_site: PublishedSite, tmp_path: Path
 ) -> None:
@@ -495,12 +553,13 @@ def test_an_unreachable_site_means_no_trend_and_the_build_goes_on(
 ) -> None:
     """A runner that cannot reach the site at all still builds the page: the
     trend starts again from this run, and the log says the site did not
-    answer."""
+    answer -- once, because the other files live on the same site and are not
+    asked for after it gave no answer."""
     result = build(f"http://127.0.0.1:{_closed_port()}/")
 
     assert result.returncode == 0, result.stderr
     assert _saw(tmp_path) == {}
-    assert "did not answer" in result.stderr
+    assert result.stderr.count("did not answer") == 1, result.stderr
     assert (checkout / "site" / "index.html").is_file()
     assert (checkout / "site" / "report" / "index.html").is_file()
 

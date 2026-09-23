@@ -29,9 +29,9 @@ RESULTS="allure-results"
 SITE="site"
 ALLURE_VERSION="2.30.0"
 # Where the previous publication is served. CI sets it; the default is this
-# repository's own GitHub Pages address. It names a directory, so it ends in
-# exactly one slash whatever it was given: a path joined onto it without one
-# would ask for something beside the site instead of inside it.
+# repository's own GitHub Pages address. It names a directory, so a slash is
+# added when it was given without one: a path joined onto it without one would
+# ask for something beside the site instead of inside it.
 SITE_URL="${SITE_URL:-https://wolfgung.github.io/Marketplace-Test-Automation-Framework/}"
 SITE_URL="${SITE_URL%/}/"
 
@@ -49,12 +49,14 @@ rm -rf "$RESULTS" "$SITE"
 # artefact this script copies last win by accident (the way a naive `cp -r`
 # of both into the same path, or an artefact download to a shared path,
 # would). See `showcase/merge.py` and `tests/unit/test_showcase_merge.py`.
+# The copy names its target last, as every cp takes it: `cp -t` is GNU's alone,
+# and a clean clone has to build on macOS too.
 mkdir -p "$RESULTS"
 for dir in "$API_RESULTS" "$UI_RESULTS"; do
   if [ -d "$dir" ]; then
     find "$dir" -mindepth 1 -maxdepth 1 \
       ! -name categories.json ! -name environment.properties \
-      -exec cp -t "$RESULTS" {} +
+      -exec sh -c 'cp "$@" "$0"' "$RESULTS" {} +
   fi
 done
 python3 showcase/merge.py categories \

@@ -269,12 +269,17 @@ jobs:
       group: pages
       cancel-in-progress: false
     steps:
+      # No git runs after the checkout, so the token is not left in .git/config
+      # for the steps below.
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # The build needs Python's standard library and nothing installed: with
+      # the Pages token in this job, the pinned Allure command line is the only
+      # third-party code it runs. The script's tests hold the build to that.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-      - run: pip install .
       - uses: actions/download-artifact@v4
         with:
           name: allure-results-api
