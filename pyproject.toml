@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ecom-marketplace-taf"
 version = "0.1.0"
 description = "Marketplace Test Automation Framework (Python, Pytest, Playwright)"
+authors = [{ name = "Pavel Zhukov Atum" }]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
