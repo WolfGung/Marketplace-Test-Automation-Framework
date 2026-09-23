@@ -1,0 +1,29 @@
+{
+  "responseCode": 200,
+  "products": [
+    {
+      "id": 7,
+      "name": "Blue Denim Jeans",
+      "price": "Rs. 1200",
+      "brand": "Polo",
+      "category": {
+        "usertype": {
+          "usertype": "Men"
+        },
+        "category": "Jeans"
+      }
+    },
+    {
+      "id": 8,
+      "name": "Regular Fit Straight Jeans",
+      "price": "Rs. 1150",
+      "brand": "Allen Solly Junior",
+      "category": {
+        "usertype": {
+          "usertype": "Kids"
+        },
+        "category": "Jeans"
+      }
+    }
+  ]
+}

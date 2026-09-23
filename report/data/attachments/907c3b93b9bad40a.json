@@ -1,0 +1,41 @@
+{
+  "responseCode": 200,
+  "products": [
+    {
+      "id": 1,
+      "name": "Blue Top",
+      "price": "Rs. 500",
+      "brand": "Polo",
+      "category": {
+        "usertype": {
+          "usertype": "Women"
+        },
+        "category": "Tops"
+      }
+    },
+    {
+      "id": 5,
+      "name": "Winter Top",
+      "price": "Rs. 600",
+      "brand": "Mast & Harbour",
+      "category": {
+        "usertype": {
+          "usertype": "Women"
+        },
+        "category": "Tops"
+      }
+    },
+    {
+      "id": 6,
+      "name": "Summer White Top",
+      "price": "Rs. 400",
+      "brand": "H&M",
+      "category": {
+        "usertype": {
+          "usertype": "Women"
+        },
+        "category": "Tops"
+      }
+    }
+  ]
+}

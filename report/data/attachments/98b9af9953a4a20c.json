@@ -1,0 +1,25 @@
+{
+  "responseCode": 200,
+  "brands": [
+    {
+      "id": 1,
+      "brand": "Allen Solly Junior"
+    },
+    {
+      "id": 2,
+      "brand": "H&M"
+    },
+    {
+      "id": 3,
+      "brand": "Madame"
+    },
+    {
+      "id": 4,
+      "brand": "Mast & Harbour"
+    },
+    {
+      "id": 5,
+      "brand": "Polo"
+    }
+  ]
+}

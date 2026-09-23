@@ -1,0 +1,19 @@
+{
+  "name": "Joyce Hart",
+  "email": "joyce.hart.90351@example.com",
+  "password": "Qwerty!234",
+  "title": "Miss",
+  "birth_date": "20",
+  "birth_month": "3",
+  "birth_year": "2000",
+  "firstname": "Joyce",
+  "lastname": "Hart",
+  "company": "Updated QA Company",
+  "address1": "88596 Jeffrey Crest Suite 595",
+  "address2": "Suite 321",
+  "country": "United States",
+  "zipcode": "86191",
+  "state": "Minnesota",
+  "city": "Lake Sherylland",
+  "mobile_number": "0812438777"
+}

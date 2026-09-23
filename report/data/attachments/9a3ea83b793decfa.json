@@ -1,0 +1,19 @@
+{
+  "name": "Joseph Jackson",
+  "email": "joseph.jackson.84101@example.com",
+  "password": "Qwerty!234",
+  "title": "Miss",
+  "birth_date": "19",
+  "birth_month": "5",
+  "birth_year": "1975",
+  "firstname": "Joseph",
+  "lastname": "Jackson",
+  "company": "Curtis and Sons",
+  "address1": "81683 Kristen Cliffs Suite 514",
+  "address2": "Apt. 017",
+  "country": "United States",
+  "zipcode": "40849",
+  "state": "Kansas",
+  "city": "Monicahaven",
+  "mobile_number": "7493209242"
+}

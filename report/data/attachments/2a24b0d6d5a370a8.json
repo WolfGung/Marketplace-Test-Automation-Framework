@@ -1,0 +1,19 @@
+{
+  "name": "David Hoffman",
+  "email": "david.hoffman.4235@example.com",
+  "password": "Qwerty!234",
+  "title": "Mrs",
+  "birth_date": "28",
+  "birth_month": "1",
+  "birth_year": "1985",
+  "firstname": "David",
+  "lastname": "Hoffman",
+  "company": "Smith, Russell and Vaughan",
+  "address1": "44536 Johnathan Rapids",
+  "address2": "Apt. 875",
+  "country": "United States",
+  "zipcode": "92373",
+  "state": "Hawaii",
+  "city": "Christopherbury",
+  "mobile_number": "7807179737"
+}

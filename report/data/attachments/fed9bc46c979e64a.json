@@ -1,0 +1,19 @@
+{
+  "name": "John Townsend",
+  "email": "john.townsend.4930@example.com",
+  "password": "Qwerty!234",
+  "title": "Mr",
+  "birth_date": "16",
+  "birth_month": "9",
+  "birth_year": "1974",
+  "firstname": "John",
+  "lastname": "Townsend",
+  "company": "Anthony-Weiss",
+  "address1": "795 Tapia Green",
+  "address2": "Suite 334",
+  "country": "United States",
+  "zipcode": "42441",
+  "state": "Washington",
+  "city": "South Brian",
+  "mobile_number": "6468415594"
+}

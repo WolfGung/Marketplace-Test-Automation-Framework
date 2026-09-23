@@ -1,0 +1,101 @@
+{
+  "responseCode": 200,
+  "products": [
+    {
+      "id": 1,
+      "name": "Blue Top",
+      "price": "Rs. 500",
+      "brand": "Polo",
+      "category": {
+        "usertype": {
+          "usertype": "Women"
+        },
+        "category": "Tops"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Men Tshirt",
+      "price": "Rs. 400",
+      "brand": "H&M",
+      "category": {
+        "usertype": {
+          "usertype": "Men"
+        },
+        "category": "Tshirts"
+      }
+    },
+    {
+      "id": 3,
+      "name": "Sleeveless Dress",
+      "price": "Rs. 1000",
+      "brand": "Madame",
+      "category": {
+        "usertype": {
+          "usertype": "Women"
+        },
+        "category": "Dress"
+      }
+    },
+    {
+      "id": 4,
+      "name": "Stylish Dress",
+      "price": "Rs. 1500",
+      "brand": "Madame",
+      "category": {
+        "usertype": {
+          "usertype": "Women"
+        },
+        "category": "Dress"
+      }
+    },
+    {
+      "id": 5,
+      "name": "Winter Top",
+      "price": "Rs. 600",
+      "brand": "Mast & Harbour",
+      "category": {
+        "usertype": {
+          "usertype": "Women"
+        },
+        "category": "Tops"
+      }
+    },
+    {
+      "id": 6,
+      "name": "Summer White Top",
+      "price": "Rs. 400",
+      "brand": "H&M",
+      "category": {
+        "usertype": {
+          "usertype": "Women"
+        },
+        "category": "Tops"
+      }
+    },
+    {
+      "id": 7,
+      "name": "Blue Denim Jeans",
+      "price": "Rs. 1200",
+      "brand": "Polo",
+      "category": {
+        "usertype": {
+          "usertype": "Men"
+        },
+        "category": "Jeans"
+      }
+    },
+    {
+      "id": 8,
+      "name": "Regular Fit Straight Jeans",
+      "price": "Rs. 1150",
+      "brand": "Allen Solly Junior",
+      "category": {
+        "usertype": {
+          "usertype": "Kids"
+        },
+        "category": "Jeans"
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Denise Gray",
+  "email": "denise.gray.48701@example.com",
+  "password": "Qwerty!234",
+  "title": "Miss",
+  "birth_date": "17",
+  "birth_month": "6",
+  "birth_year": "1985",
+  "firstname": "Denise",
+  "lastname": "Gray",
+  "company": "Greene, Gonzalez and Ramirez",
+  "address1": "712 Little Junctions Suite 733",
+  "address2": "Apt. 093",
+  "country": "United States",
+  "zipcode": "57287",
+  "state": "Virginia",
+  "city": "Bonnieburgh",
+  "mobile_number": "0690569437"
+}

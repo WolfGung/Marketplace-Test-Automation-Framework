@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marketplace Test Automation Framework</title>
+<meta name="description" content="An automated suite across the REST API, the browser and the purchase flow of a small e-commerce shop this repository ships, published from the run that produced its own figures.">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf8;
+    --panel: #ffffff;
+    --ink: #1b1f24;
+    --muted: #5a6470;
+    --line: #dcdcd8;
+    --accent: #1c5d99;
+    --on-accent: #ffffff;
+    --mark: #f2efe9;
+    /* The diagrams are referenced with <img>, so the currentColor inside them
+       resolves against the SVG itself, not against this page: they are drawn
+       dark whatever the theme. They therefore sit on a plate that stays light
+       in both themes rather than on a panel that turns dark under them. */
+    --plate: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216;
+      --panel: #161b22;
+      --ink: #e6edf3;
+      --muted: #9aa7b4;
+      --line: #2a323c;
+      --accent: #8ab4f8;
+      --on-accent: #0f1216;
+      --mark: #1b2129;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    overflow-wrap: break-word;
+  }
+
+  /* One container width for every section, so headings share a left edge on a
+     wide screen; the reading column is held separately at about 70 characters. */
+  .wrap, .wide { max-width: 900px; margin: 0 auto; padding: 0 16px; }
+  .wrap h1, .wrap h2, .wrap h3, .wrap p, .wrap ul:not(.stats), .wrap .aside,
+  .wide h2, .wide p, figcaption { max-width: 68ch; }
+
+  h1, h2, h3 { line-height: 1.25; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.6rem); margin: 0 0 .5rem; }
+  h2 { font-size: clamp(1.25rem, 1.05rem + 1vw, 1.6rem); margin: 0 0 .75rem; }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 .35rem; }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .92em;
+    background: var(--mark);
+    padding: .1em .35em;
+    border-radius: 4px;
+  }
+
+  header.top { padding: 3rem 0 1.5rem; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--muted); margin: 0 0 .75rem;
+  }
+  .lede { font-size: 1.1rem; }
+  .stack { color: var(--muted); font-size: .95rem; }
+
+  .links { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.5rem; }
+  .btn {
+    display: inline-block; padding: .6rem 1rem; border-radius: 8px;
+    border: 1px solid var(--line); text-decoration: none; color: var(--ink);
+    background: var(--panel); font-weight: 600; font-size: .95rem;
+  }
+  .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .btn:hover { border-color: var(--accent); }
+  .btn:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  section { padding: 2.5rem 0; border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 0; }
+
+  .stats {
+    list-style: none; margin: 0 0 1.25rem; padding: 0;
+    display: grid; gap: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  }
+  .stats li {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: .9rem 1rem;
+  }
+  .stats b {
+    display: block; font-size: 2rem; line-height: 1.1;
+    font-variant-numeric: tabular-nums; font-weight: 650;
+  }
+  .stats span { display: block; color: var(--muted); font-size: .88rem; margin-top: .2rem; }
+  .meta { color: var(--muted); font-size: .95rem; }
+
+  figure { margin: 0 0 1.5rem; }
+  /* Each figure is a link to the SVG itself, so a reader on a phone can open
+     it at full size and read the labels. Block, or the anchor would sit on a
+     text baseline and leave a gap under the drawing. */
+  figure a { display: block; }
+  figcaption { color: var(--muted); font-size: .9rem; margin-top: .5rem; }
+  img, video { display: block; max-width: 100%; height: auto; }
+  video {
+    width: 100%; background: var(--mark);
+    border: 1px solid var(--line); border-radius: 10px;
+  }
+  figure img {
+    width: 100%; background: var(--plate);
+    border: 1px solid var(--line); border-radius: 10px; padding: .75rem;
+  }
+
+  .flag {
+    border-left: 3px solid var(--accent);
+    padding-left: .9rem;
+  }
+
+  .note {
+    color: var(--muted); font-size: .95rem;
+    border-left: 3px solid var(--line); padding-left: .9rem;
+  }
+
+  .aside {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 1.25rem 1.25rem .5rem; margin-top: 1.5rem;
+  }
+  .aside h3 { margin-top: 0; }
+  .aside ul { margin: 0 0 1rem; padding-left: 1.1rem; }
+  .aside li { margin-bottom: .5rem; }
+
+  .closing { text-align: left; padding-bottom: 3rem; }
+  footer { color: var(--muted); font-size: .9rem; padding: 2rem 0 3rem; }
+  footer p { margin-bottom: .5rem; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Test automation · portfolio project</p>
+    <h1>A marketplace suite built around the purchase</h1>
+    <p class="lede">
+      24 automated checks against an e-commerce shop this repository
+      ships: the REST API, the browser, and the order that crosses both. The
+      purchase is driven front to back — sign in, add to cart, delivery address, payment —
+      and recorded, so the claim that is hardest to believe is the one you can
+      watch.
+      Every push runs every layer of it against that shop, a nightly job reads
+      the public demo site the shop reproduces, and this page is generated from
+      the run that produced the figures on it.
+    </p>
+    <p class="stack">Python · pytest · Playwright · httpx · pydantic · Allure · Docker · GitHub Actions</p>
+    <nav class="links" aria-label="Project">
+      <a class="btn primary" href="report/">Open the test report</a>
+      <a class="btn" href="https://github.com/WolfGung/Marketplace-Test-Automation-Framework">Read the code</a>
+      <a class="btn" href="#recording">Watch the purchase</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section id="numbers" aria-labelledby="numbers-h">
+  <div class="wrap">
+    <h2 id="numbers-h">The run this page was built from</h2>
+    <ul class="stats">
+      <li><b>24</b><span>checks of the application</span></li>
+      <li><b>24</b><span>passed</span></li>
+      <li><b>0</b><span>failed</span></li>
+      <li><b>5</b><span>in the smoke set</span></li>
+    </ul>
+    <p>
+      They divide into 14 against the REST API, 8 through a browser
+      and 2 end-to-end.
+      The end-to-end pair is one order placed through the interface from
+      sign-in to payment, and one check that puts the same question to both
+      doors at once.
+
+
+
+
+
+    </p>
+
+    <p class="meta">
+      Finished 23 September 2026, 22:38 UTC against revision <code>1a54cd1</code>, from a
+      run of 24 results in all. Every number on this page is read out
+      of that run's Allure results when the page is generated; none of them is
+      typed in by hand.
+      <a href="https://github.com/WolfGung/Marketplace-Test-Automation-Framework/actions/runs/35929357990">The pipeline run</a> that produced them is public.
+    </p>
+  </div>
+</section>
+
+<section id="recording" aria-labelledby="recording-h">
+  <div class="wide">
+    <h2 id="recording-h">The purchase, as it runs</h2>
+    <p>
+      The end-to-end order, recorded by the browser during the run above: a sign
+      in with the account the suite registered through the API a moment earlier,
+      a product opened and added to the cart, the delivery address the account
+      was registered with, and the order placed. No narration and no cuts. The
+      account is deleted when the test ends.
+    </p>
+    <video controls preload="metadata" src="media/checkout.webm" width="1440" height="900">
+      Your browser cannot play this recording. It is a WebM file at
+      <a href="media/checkout.webm">media/checkout.webm</a>.
+    </video>
+    <h3>The same purchase, one action at a time</h3>
+    <p>
+      The run also recorded a Playwright trace of that order, and a trace is
+      more than a video: it can be stepped through action by action, with the
+      page's DOM as it was at each step, the network the page made, the
+      timings, and the test's own source beside the line that ran. Watching it
+      answers "did it work"; stepping through it answers "what exactly did it
+      do".
+    </p>
+    <p class="links">
+      <a class="btn primary" href="https://trace.playwright.dev/?trace=https://wolfgung.github.io/Marketplace-Test-Automation-Framework/media/checkout-trace.zip">Step through the purchase</a>
+      <a class="btn" href="media/checkout-trace.zip">Download the trace</a>
+    </p>
+    <p class="note">
+      The first link opens the file in Playwright's own trace viewer, which is a
+      static page that reads the trace straight from this site. The second is
+      the same file to keep: <code>playwright show-trace checkout-trace.zip</code>
+      opens it locally, with no upload anywhere.
+    </p>
+  </div>
+</section>
+
+<section id="structure" aria-labelledby="structure-h">
+  <div class="wide">
+    <h2 id="structure-h">How it is put together</h2>
+    <figure>
+      <a href="assets/architecture.svg">
+        <img src="assets/architecture.svg" alt="Three bands. At the top the test modules with their case counts: tests/api with 14 cases, tests/ui with 8 and tests/e2e with 2. Below them the code every test reuses: the HTTP client and API resources in src/ecom_taf/api, the page objects in src/ecom_taf/ui/pages, the typed models in src/ecom_taf/models, the per-run data in src/ecom_taf/data/user_factory.py and the settings in src/ecom_taf/config/settings.py. At the bottom the shop under test, which ships with this repository: the stand, a small FastAPI shop, and under it the two doors it answers on — the REST API at /api and the pages a browser drives. Below those, drawn with a dashed edge because it is somebody else's system, the public demo site automationexercise.com, which the stand reproduces and which one nightly job reads. The API tests reach the API through the client, the browser tests reach the pages through Playwright driving Chromium, and the end-to-end path runs down the middle through both doors at once.">
+      </a>
+      <figcaption>Tests hold the assertions; everything reusable sits below them, so a change in the application lands in one file. The end-to-end path is the one route that crosses both doors.</figcaption>
+    </figure>
+    <figure>
+      <a href="assets/ci-pipeline.svg">
+        <img src="assets/ci-pipeline.svg" alt="Every trigger — a push, a pull request, the nightly schedule, a manual run — starts the same three suites, and all three run against the stand this repository ships: the API suite, the browser and end-to-end suite, and the framework's own checks over tests/unit and tests/stand, which hold every number on this page to what pytest collects and check the stand's own contract. A fourth job repeats the browser selection on Chromium, Firefox and WebKit, and only on a manual run with the cross-browser box ticked. One more branch leaves the repository: nightly and on request, a probe asks the public demo site for a status code, and on HTTP 200 the drift check runs the read-only smoke set against it, never blocking the run; on anything else it is skipped with a stated reason. The API and browser suites produce allure-results, and the browser run also produces the recording of the purchase and the Playwright trace of it. On main, once all three suites have passed, those artefacts go on to restore the Allure history from the gh-pages branch, generate the report, build this page and publish to gh-pages, which GitHub Pages serves.">
+      </a>
+      <figcaption>The same pipeline that gates a push publishes this page, so what you are reading came out of a run that had to pass first.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="coverage" aria-labelledby="coverage-h">
+  <div class="wrap">
+    <h2 id="coverage-h">How the coverage was chosen</h2>
+    <p>
+      The suite starts from what costs a marketplace money when it breaks rather
+      than from what is easy to automate. Four failures head that list: an order
+      that cannot be completed, an account that cannot be created or cannot be
+      deleted, a catalogue or a search that answers with nothing, and a cart
+      that loses a line between the product page and the order. Each is covered
+      where it shows first — the account lifecycle and the catalogue against the
+      API, the cart and the search through the browser, the order end to end.
+      The smoke marker then goes on the shortest set that would catch a
+      marketplace that is broken rather than wrong in a detail: the catalogue
+      answering, an account created and deleted again, a sign-in through the
+      interface, the home page rendering, and the order placed front to back.
+      5 of the results in this run carry it.
+    </p>
+    <p>
+      A check then belongs at the lowest layer that can still prove the thing
+      that matters. Product listings, search results, account creation and
+      deletion, and the answer each gives to input it should reject are data
+      rules, so they are asserted against the REST API, where a failure names
+      its own cause and needs no browser: 14 cases. Only behaviour a person
+      can actually see is driven through a browser — the home page and a
+      product's name and price as they render, a search made from the page, a
+      product reaching the cart with the quantity that was asked for, and a
+      sign-in that has to be refused: the 8 browser cases.
+      The 2 end-to-end cases exist because the purchase is the one flow
+      whose whole value is that the separate parts hold together, and because
+      one of them is the only place where the interface and the API are made to
+      answer the same question.
+
+
+    </p>
+    <div class="aside">
+      <h3>What this suite deliberately does not cover</h3>
+      <ul>
+        <li><b>The arithmetic.</b> The end-to-end order asserts that it
+          completes and that the delivery address is the one the account was
+          registered with; nothing asserts that the total equals the sum of the
+          lines. Search is checked the same way — that it answers with products
+          that carry a name and a price, not that each result matches the term
+          that was typed.</li>
+        <li><b>Payment beyond the form.</b> The end-to-end order stops at
+          submitting the payment form. There is no processor behind this
+          application, so going further would assert a fixture rather than the
+          product.</li>
+        <li><b>Performance.</b> Nothing here measures response time or load.
+          The timeouts in the suite exist to fail a stuck test, not to hold a
+          budget, and a green functional run says nothing about either.</li>
+        <li><b>Accessibility.</b> It needs its own tooling and its own time
+          budget. Implying that a functional suite covers it would be the
+          dishonest part.</li>
+        <li><b>Cross-browser rendering.</b> The engine is a setting, so the
+          suite can run on Firefox or WebKit, but no assertion anywhere is about
+          how a page renders in one engine versus another.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="decisions" aria-labelledby="decisions-h">
+  <div class="wrap">
+    <h2 id="decisions-h">Four decisions that keep it maintainable</h2>
+
+    <h3>API responses are parsed into typed models, not read as dictionaries</h3>
+    <p>
+      The catalogue and the search results go through <code>ProductsResponse</code>
+      and <code>Product</code> in <code>src/ecom_taf/models/</code> before a test
+      asserts anything about them. A field that is renamed, dropped or returned
+      with the wrong type fails there, naming the field, instead of surfacing
+      three assertions later as a <code>KeyError</code> — or as a comparison
+      against <code>None</code> that happens to pass. A registration travels the
+      same way in the other direction: <code>UserAccount</code> is the shape of
+      an account, and the form the API receives is built from it rather than
+      assembled at the call site.
+    </p>
+
+    <h3>One fact is checked through two doors</h3>
+    <p>
+      <code>tests/e2e/test_api_ui_product_consistency.py</code> reads a product
+      from the REST API, opens the same product in the browser and compares the
+      name and the price. Both layers can be green while the two disagree; that
+      disagreement is what a customer sees, and neither suite on its own can
+      catch it.
+    </p>
+
+    <h3>The suite is a polite guest on a site it does not own</h3>
+    <p>
+      The <code>registered_user</code> fixture in <code>tests/conftest.py</code>
+      creates a disposable account through the API, hands it to the test and
+      deletes it afterwards, so a run leaves the application as it found it.
+      That is also why the hook that captures a failure screenshot is written
+      never to raise: a crashed session skips teardown, and skipped teardown
+      means an account left behind on somebody else's site. Against the stand
+      the same fixture runs unchanged, and the account it creates lives in the
+      stand's memory for exactly one test.
+    </p>
+
+    <h3>Per-run data comes from a factory, not from constants</h3>
+    <p>
+      <code>src/ecom_taf/data/user_factory.py</code> builds a fresh account for
+      every test that needs one, address and all. A suite pinned to a constant
+      email passes once and then fails on "already registered", and the usual
+      repair — deleting the record by hand between runs — is a step that cannot
+      exist inside a pipeline.
+    </p>
+  </div>
+</section>
+
+<section class="closing" aria-labelledby="closing-h">
+  <div class="wrap">
+    <h2 id="closing-h">The full report</h2>
+    <p>
+      Every case, its steps, its duration and the trend across runs. A failed
+      browser test carries a full-page screenshot and the page's HTML as it was
+      at the moment of the failure, and every run records what it was tested
+      against: the site, the API, the Python that ran it, and — for the leg
+      that drove one — the browser and whether it ran headless.
+    </p>
+    <p>
+      Failures are sorted by the text of the failure into four groups — a
+      product defect, a timeout, a selector that no longer matches, and a site
+      or infrastructure problem — because that is what decides who picks the
+      failure up. The sorting reads the stack trace, so it is a first guess and
+      not a diagnosis: a check that fails on a plain assertion is filed as a
+      product defect whatever the real cause turns out to be. What it does
+      reliably separate is the pair that matters most for a suite driving a
+      running application: the application answering wrongly, and the
+      application not answering at all. Here it has nothing to sort, and by
+      design never will: this page is only ever published by a run in which
+      every check passed, so a failing run stops at the pipeline, where the
+      rule that stops it (<code>.github/workflows/ci.yml</code>), the empty
+      grouping it leaves behind (<code>report/widgets/categories.json</code>)
+      and the runs that did fail are all in the repository.
+    </p>
+    <p class="links">
+      <a class="btn primary" href="report/">Open the Allure report</a>
+      <a class="btn" href="https://github.com/WolfGung/Marketplace-Test-Automation-Framework">Repository and documentation</a>
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      Under test: the stand, a small shop in this repository's <code>stand/</code>
+      with the same pages and the same REST API as
+      <a href="https://www.automationexercise.com">automationexercise.com</a>, a public
+      demo marketplace published as a practice target for test automation. The
+      suite starts the stand itself, so every number above came from a run that
+      needed nothing but this repository. The public site is one setting away
+      and one job a night reads it — the read-only part of the smoke set, which
+      creates no account and places no order there — so the page objects stay
+      honest against the markup the stand copies. Accounts created against the
+      stand are deleted the same way they always were. No employer code, data or
+      systems are involved.
+    </p>
+    <p>Built from run <code>1a54cd1</code> on 23 September 2026, 22:38 UTC.</p>
+  </div>
+</footer>
+
+</body>
+</html>
