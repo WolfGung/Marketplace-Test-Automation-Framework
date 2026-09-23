@@ -213,10 +213,11 @@ CI has a `browsers` job that does exactly that on all three engines, and it runs
 
 ## Related work
 
-Two more repositories from the same portfolio:
+Three more repositories from the same portfolio:
 
 - **[Toolshop-Test-Automation-Framework](https://github.com/WolfGung/Toolshop-Test-Automation-Framework)** — a test automation framework built from scratch for an online shop: API, browser and end-to-end cases against a public demo shop or a local Docker stand, with test design documents.
 - **[Web-Scraping-Automation-Framework](https://github.com/WolfGung/Web-Scraping-Automation-Framework)** — a scraper that collects two practice sites over HTTP and through a browser, detects changes between nightly runs and publishes the data, the change report and the test report.
+- **[Test-Suite-Rescue](https://github.com/WolfGung/Test-Suite-Rescue)** — a deliberately sick test suite, its cured version on Playwright and Selenium, and the measured difference between them — twenty runs of each, reproducible with one command.
 
 ## Hire me
 
