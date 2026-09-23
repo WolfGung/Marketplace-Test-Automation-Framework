@@ -22,7 +22,7 @@ COPY tests ./tests
 #   showcase/   imported by `tests/unit/test_showcase_build.py` and
 #               `test_showcase_merge.py`, and read by `test_showcase_figures.py`
 #               (the diagrams and the cover template it checks the numbers in).
-#   scripts/    read by `tests/unit/test_publish_showcase_script.py`.
+#   scripts/    read and run by `tests/unit/test_build_showcase_script.py`.
 #   stand/      imported by tests/stand and by the local_stand fixture;
 #               pytest collects tests/stand before -m selects anything.
 #   .github/    tests/unit/test_ci_targets.py reads ci.yml straight off disk

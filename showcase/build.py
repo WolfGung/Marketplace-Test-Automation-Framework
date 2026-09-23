@@ -40,9 +40,9 @@ CROSS_CUTTING = ("smoke", "negative", "integration", "destructive", "stand")
 if set(LAYERS) & set(CROSS_CUTTING):  # pragma: no cover - guards a typo above
     raise RuntimeError("a marker cannot be both a layer and a cross-cutting tag")
 
-#: A recording smaller than this is a truncated file, not a video. The publish
-#: step applies the same floor with `find -size +10240c`, which is this number
-#: written the way find counts: both admit a file of more than 10 KiB.
+#: A recording smaller than this is a truncated file, not a video. The build
+#: script leaves the choice to this module, so this is the only floor there is:
+#: it admits a file of more than 10 KiB, as `find -size +10240c` would.
 MIN_VIDEO_BYTES = 10 * 1024
 
 #: The recording the page publishes, by name. A run records every case marked
@@ -50,8 +50,8 @@ MIN_VIDEO_BYTES = 10 * 1024
 #: is normal: the second end-to-end case opens a product page to compare it
 #: with the API and never buys anything. Both are far above the floor above, so
 #: size cannot tell them apart, and a page that captioned the cross-layer check
-#: as the purchase would misdescribe what the reader is watching. The publish
-#: step picks by the same name.
+#: as the purchase would misdescribe what the reader is watching. The build
+#: script picks nothing itself; it hands this module the directory.
 PREFERRED_RECORDINGS = ("*test_logged_in_user_can_place_an_order*.webm",)
 
 #: The Playwright trace the page publishes, by the same rule and for the same
@@ -343,12 +343,12 @@ def _pick_video(video_dir: Path) -> Path | None:
     Only a name in ``PREFERRED_RECORDINGS`` is the purchase; anything else in
     the directory is a recording of some other case and must not be captioned
     as if it were the order being placed. A run that leaves no preferred file
-    gets no video at all. ``scripts/publish-showcase.sh`` used to keep its own,
-    separate copy of this rule as a second glob-matching loop, and the two
-    went out of step: the script would publish the cross-layer recording as a
-    fallback while this function still decided the page should show none,
-    shipping a real file to ``gh-pages`` that nothing on the page ever
-    referenced. The script now calls ``build_site`` with the real videos
+    gets no video at all. The shell script that assembles the site used to keep
+    its own, separate copy of this rule as a second glob-matching loop, and the
+    two went out of step: the script would publish the cross-layer recording as
+    a fallback while this function still decided the page should show none,
+    publishing a real file that nothing on the page ever referenced.
+    ``scripts/build-showcase.sh`` now calls ``build_site`` with the real videos
     directory and does no selection of its own; this function is where a
     fallback would need to be added if one is ever wanted, precisely so that
     the page and the file it ships together can never disagree again.
@@ -359,7 +359,7 @@ def _pick_video(video_dir: Path) -> Path | None:
 def _place(source: Path | None, target: Path) -> bool:
     """Put an optional artefact beside the page. True when the page can use it.
 
-    A file already sitting at the target counts: the publish step may have put
+    A file already sitting at the target counts: the build script may have put
     it there before calling this module.
     """
     if target.is_file() and target.stat().st_size > 0:

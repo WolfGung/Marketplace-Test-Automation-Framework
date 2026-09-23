@@ -2,7 +2,7 @@
      role="img" aria-labelledby="ci-title ci-desc"
      font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
   <title id="ci-title">What CI does with every change</title>
-  <desc id="ci-desc">One workflow with four triggers: a push to main, a pull request, a nightly run at 06:00 UTC and a manual dispatch, whose form carries a cross-browser tick. Every trigger starts the same suites, and they all run against the stand — the small shop this repository ships, started by the suite itself — so not one of them waits on an answer from anywhere. The API suite, fourteen cases. The browser suite, ten cases selected by the ui or e2e markers, which also records the order and the Playwright trace of it. The framework's own checks, which run pytest over tests/unit and tests/stand — the pins that hold every number on this page, on the cover and in the README to what pytest collects, and the contract of the stand itself — and which write no Allure results on purpose. And, on a manual run with the cross-browser box ticked, those same ten browser cases again on chromium, firefox and webkit. One job is not about this code: nightly and on request, a probe asks the public demo site the stand reproduces for a status code with a thirty-second timeout, and when it answers HTTP 200 the drift check runs two cases against it — the smoke set without the cases that create an account or place an order. Red there is information about that site, so it never blocks the run; anything other than 200 and the check is skipped rather than failed, and the run posts a notice saying what answered. On main, and only once the API suite, the browser suite and the framework checks have all passed, the artefacts go on to restore the Allure history from the gh-pages branch, generate the report, build this page from the run's own results and publish to gh-pages, which GitHub Pages serves. Because publication waits for those three, the page that is published always carries a complete passing run.</desc>
+  <desc id="ci-desc">One workflow with four triggers: a push to main, a pull request, a nightly run at 06:00 UTC and a manual dispatch, whose form carries a cross-browser tick. Every trigger starts the same suites, and they all run against the stand — the small shop this repository ships, started by the suite itself — so not one of them waits on an answer from anywhere. The API suite, fourteen cases. The browser suite, ten cases selected by the ui or e2e markers, which also records the order and the Playwright trace of it. The framework's own checks, which run pytest over tests/unit and tests/stand — the pins that hold every number on this page, on the cover and in the README to what pytest collects, and the contract of the stand itself — and which write no Allure results on purpose. And, on a manual run with the cross-browser box ticked, those same ten browser cases again on chromium, firefox and webkit. One job is not about this code: nightly and on request, a probe asks the public demo site the stand reproduces for a status code with a thirty-second timeout, and when it answers HTTP 200 the drift check runs two cases against it — the smoke set without the cases that create an account or place an order. Red there is information about that site, so it never blocks the run; anything other than 200 and the check is skipped rather than failed, and the run posts a notice saying what answered. On main, and only once the API suite, the browser suite and the framework checks have all passed, the artefacts go on to restore the Allure history from the published site, generate the report, build this page from the run's own results and deploy it to GitHub Pages, which serves it. Because publication waits for those three, the page that is published always carries a complete passing run.</desc>
 
   <!-- The figure is referenced through <img>, so it cannot inherit a colour
        from the host page: it carries its own light plate and dark ink, and
@@ -141,7 +141,7 @@
 
   <rect class="box" x="40" y="752" width="192" height="112" rx="8"/>
   <text class="t2" x="136" y="780" text-anchor="middle">restore the history</text>
-  <text class="m"  x="136" y="802" text-anchor="middle">from the gh-pages branch</text>
+  <text class="m"  x="136" y="802" text-anchor="middle">from the published site</text>
   <text class="m"  x="136" y="820" text-anchor="middle">so the trend survives</text>
   <text class="m"  x="136" y="838" text-anchor="middle">the run that renews it</text>
 
@@ -156,7 +156,7 @@
   <text class="m"  x="560" y="820" text-anchor="middle">the run's own results</text>
 
   <rect class="box" x="676" y="752" width="192" height="112" rx="8"/>
-  <text class="t2" x="772" y="780" text-anchor="middle">publish to gh-pages</text>
+  <text class="t2" x="772" y="780" text-anchor="middle">deploy to Pages</text>
   <text class="m"  x="772" y="802" text-anchor="middle">GitHub Pages serves</text>
   <text class="m"  x="772" y="820" text-anchor="middle">the page and the report</text>
 

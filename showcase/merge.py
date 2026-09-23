@@ -19,7 +19,7 @@ loses nothing. For `environment.properties` it means the merged report's
 Environment panel describes only whichever job's download landed last, with
 nothing on the page to say the other job's context was dropped. This module
 is the one place that decides what "merged" means for those two files, so
-the publish script does not have to guess, and a collision it cannot
+the build script does not have to guess, and a collision it cannot
 resolve fails loudly instead of quietly picking one side.
 """
 from __future__ import annotations
@@ -107,7 +107,7 @@ def main(argv: list[str]) -> int:
     try:
         _MERGERS[args.kind](args.sources, args.out)
     except ValueError as exc:
-        print(f"publish: {exc}", file=sys.stderr)
+        print(f"build-showcase: {exc}", file=sys.stderr)
         return 1
     return 0
 

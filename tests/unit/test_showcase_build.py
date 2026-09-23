@@ -495,7 +495,7 @@ def test_one_diagram_can_arrive_without_the_other(
 def test_an_artefact_already_in_place_is_used_and_left_alone(
     results: Path, tmp_path: Path
 ) -> None:
-    """The publish step may copy artefacts in before or after this runs."""
+    """The build script may copy artefacts in before or after this runs."""
     out = tmp_path / "site"
     (out / "media").mkdir(parents=True)
     (out / "media" / "checkout.webm").write_bytes(b"already here")
@@ -679,9 +679,8 @@ def test_the_order_is_preferred_over_the_other_end_to_end_recording(
 ) -> None:
     """A run records both `e2e` cases, and the page must publish the purchase.
 
-    The publish step picks by name; this module has to pick the same file, and
-    the cross-layer check is a bigger file for no reason a reader would care
-    about, so size cannot be what decides."""
+    This module picks by name, and the cross-layer check is a bigger file for
+    no reason a reader would care about, so size cannot be what decides."""
     videos = tmp_path / "videos"
     videos.mkdir()
     (videos / "checkout-test_logged_in_user_can_place_an_order.webm").write_bytes(b"o" * 20_000)

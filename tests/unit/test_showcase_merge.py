@@ -4,7 +4,7 @@
 each job writes into its own `--alluredir` (see `tests/conftest.py`). Copying
 both jobs' results into one directory by filename -- the way an artefact
 download naturally would -- lets the second copy win over the first without
-a trace. `showcase/merge.py` is what the publish step actually calls instead;
+a trace. `showcase/merge.py` is what the build script actually calls instead;
 these tests are the ones that would fail if it went back to silently
 preferring one side.
 """

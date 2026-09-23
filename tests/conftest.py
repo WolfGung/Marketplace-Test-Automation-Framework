@@ -127,7 +127,7 @@ def _write_environment_properties(results_dir: Path, *, browser_used: bool) -> N
     what a run will do is not known until its items are.
 
     In CI, this file is written independently by the `api` job and the `ui`
-    job into their own separate `--alluredir`, and the showcase's publish step
+    job into their own separate `--alluredir`, and the showcase's build script
     later merges both jobs' results into one directory. Two files with the same
     name and genuinely different content would let the later download of one
     job's artefact silently overwrite the other's, so every key is qualified

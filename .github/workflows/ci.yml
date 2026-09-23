@@ -251,15 +251,25 @@ jobs:
     # people press it. The last re-publication had to be faked with an empty
     # commit; that is the shape of the bug it caused.
     if: github.ref == 'refs/heads/main'
+    # The site goes to GitHub Pages as an artifact of this run. No branch is
+    # written, so nothing is force-pushed, and nothing piles up from one
+    # publication to the next; `contents: read` is for the checkout.
     permissions:
-      contents: write
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # One publication at a time, from reading the report's history back off the
+    # published site to deploying: two that overlapped would start from the
+    # same history, and whichever deployed last would drop the other's run from
+    # the trend. A deployment under way is never cancelled.
     concurrency:
-      group: showcase-${{ github.ref }}
+      group: pages
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -283,7 +293,15 @@ jobs:
         with:
           name: traces
           path: traces
-      - name: Assemble and publish
-        run: bash scripts/publish-showcase.sh allure-results-api allure-results-ui videos traces
+      - name: Assemble the site
+        # Builds `site/` and stops: the report, its trend read back from
+        # `SITE_URL`, the page, the diagrams and the media. Nothing is pushed.
+        run: bash scripts/build-showcase.sh allure-results-api allure-results-ui videos traces
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_URL: https://wolfgung.github.io/Marketplace-Test-Automation-Framework/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
